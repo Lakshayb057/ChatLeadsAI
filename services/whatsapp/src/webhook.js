@@ -1,6 +1,6 @@
 const axios = require("axios");
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+const BACKEND_URL = (process.env.BACKEND_URL || 'http://localhost:8000').replace(/\/$/, '');
 const SESSION_ID = process.env.SESSION_ID || 'primary_account';
 
 async function notifyBackend(data) {

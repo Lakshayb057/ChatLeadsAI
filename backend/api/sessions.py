@@ -8,7 +8,7 @@ import httpx
 import datetime
 import os
 
-WHATSAPP_SERVICE_URL = os.getenv("WHATSAPP_SERVICE_URL", "http://localhost:8001")
+WHATSAPP_SERVICE_URL = os.getenv("WHATSAPP_SERVICE_URL", "http://localhost:8001").rstrip("/")
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 

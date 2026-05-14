@@ -12,7 +12,7 @@ const { Boom } = require("@hapi/boom");
 const fs = require("fs");
 const path = require("path");
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+const BACKEND_URL = (process.env.BACKEND_URL || 'http://localhost:8000').replace(/\/$/, '');
 
 async function connectWhatsApp(sessionId, onMessage, onStatusChange) {
   const authPath = path.join(__dirname, `../auth/${sessionId}`);

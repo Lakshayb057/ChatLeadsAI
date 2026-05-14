@@ -10,7 +10,7 @@ const fs = require('fs');
 const sessions = new Map(); // Store active socket instances
 const startingSessions = new Set(); // Guard against race conditions
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:8000';
+const BACKEND_URL = (process.env.BACKEND_URL || 'http://localhost:8000').replace(/\/$/, '');
 
 async function createSession(sessionId) {
   if (sessions.has(sessionId) || startingSessions.has(sessionId)) {
