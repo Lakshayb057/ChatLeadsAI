@@ -45,7 +45,13 @@ export default function LeadsPage() {
   const [filterScore, setFilterScore] = useState('');
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [showDeleteAll, setShowDeleteAll] = useState(false);
-  const { isConnected, lastMessage } = useWebSocket('ws://localhost:8000/ws');
+  const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const apiUrl = rawApiUrl.replace(/\/$/, "");
+  
+  const rawWsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws";
+  const wsUrl = rawWsUrl.endsWith("/ws") ? rawWsUrl : `${rawWsUrl.replace(/\/$/, "")}/ws`;
+
+  const { isConnected, lastMessage } = useWebSocket(wsUrl);
 
   const fetchLeads = async () => {
     try {
@@ -54,7 +60,7 @@ export default function LeadsPage() {
       if (filterSession) params.append('session_id', filterSession);
       if (filterScore) params.append('score', filterScore);
 
-      const response = await fetch(`http://localhost:8000/contacts/?${params.toString()}`);
+      const response = await fetch(`${apiUrl}/contacts/?${params.toString()}`);
       if (!response.ok) throw new Error('Offline');
       const data = await response.json();
       setLeads(data);
@@ -67,13 +73,13 @@ export default function LeadsPage() {
   };
 
   const handleExport = () => {
-    window.location.href = 'http://localhost:8000/contacts/export';
+    window.location.href = `${apiUrl}/contacts/export`;
   };
 
   const confirmDelete = async () => {
     if (!deleteId) return;
     try {
-      await fetch(`http://localhost:8000/contacts/${deleteId}`, { method: 'DELETE' });
+      await fetch(`${apiUrl}/contacts/${deleteId}`, { method: 'DELETE' });
       setDeleteId(null);
       fetchLeads();
     } catch (e) {
@@ -83,7 +89,7 @@ export default function LeadsPage() {
 
   const confirmDeleteAll = async () => {
     try {
-      await fetch(`http://localhost:8000/contacts/all`, { method: 'DELETE' });
+      await fetch(`${apiUrl}/contacts/all`, { method: 'DELETE' });
       setShowDeleteAll(false);
       fetchLeads();
     } catch (e) {
