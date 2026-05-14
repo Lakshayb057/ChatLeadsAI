@@ -33,9 +33,11 @@ export default function WhatsAppPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [error, setError] = useState(false);
 
+  const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const apiUrl = rawApiUrl.replace(/\/$/, "");
+
   const fetchSessions = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const response = await fetch(`${apiUrl}/sessions/`);
       if (!response.ok) throw new Error('Offline');
       const data = await response.json();
@@ -51,7 +53,8 @@ export default function WhatsAppPage() {
   useEffect(() => {
     fetchSessions();
 
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws";
+    const rawWsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws";
+    const wsUrl = rawWsUrl.endsWith("/ws") ? rawWsUrl : `${rawWsUrl.replace(/\/$/, "")}/ws`;
     const ws = new WebSocket(wsUrl);
     ws.onmessage = (event) => {
       const message = JSON.parse(event.data);
@@ -69,9 +72,7 @@ export default function WhatsAppPage() {
   const handleCreateSession = async () => {
     if (!newSessionId) return;
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       await fetch(`${apiUrl}/sessions/create`, {
-        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: newSessionId.toLowerCase().replace(/\s+/g, '_') })
       });
@@ -91,7 +92,6 @@ export default function WhatsAppPage() {
     
     setDeletingSessionId(sessionId);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const url = `${apiUrl}/sessions/${sessionId}`;
       console.log(`[Fleet] Sending DELETE request to: ${url}`);
       

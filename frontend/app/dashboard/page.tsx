@@ -35,12 +35,17 @@ import { useWebSocket } from '../hooks/useWebSocket';
 export default function DashboardOverview() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
-  const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws";
+  
+  const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+  const apiUrl = rawApiUrl.replace(/\/$/, "");
+  
+  const rawWsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws";
+  const wsUrl = rawWsUrl.endsWith("/ws") ? rawWsUrl : `${rawWsUrl.replace(/\/$/, "")}/ws`;
+
   const { isConnected, lastMessage } = useWebSocket(wsUrl);
 
   const fetchStats = async () => {
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
       const response = await fetch(`${apiUrl}/stats/overview`);
       const data = await response.json();
       setStats(data);
