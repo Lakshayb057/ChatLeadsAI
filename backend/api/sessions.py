@@ -91,9 +91,13 @@ async def create_new_session(data: dict, db: Session = Depends(get_session)):
         print(f"Error starting session in Hub: {e}")
 
     # Create placeholder in DB
+    from models import User
+    admin = db.query(User).first()
+    user_id = admin.id if admin else 1
+
     session = db.query(WhatsAppSession).filter(WhatsAppSession.session_id == session_id).first()
     if not session:
-        session = WhatsAppSession(user_id=1, session_id=session_id, status="linking")
+        session = WhatsAppSession(user_id=user_id, session_id=session_id, status="linking")
         db.add(session)
         db.commit()
     

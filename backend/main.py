@@ -2,7 +2,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
-from sqlmodel import SQLModel
+from sqlmodel import SQLModel, Session
 from database import engine
 import logging
 
@@ -13,12 +13,25 @@ logger = logging.getLogger(__name__)
 # Import routers
 from api import webhooks, contacts, sessions, stats
 from core.ws import manager
+from models import User
+from database import get_session
+import os
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
     logger.info("Creating database tables...")
     SQLModel.metadata.create_all(engine)
+    
+    # Seed default user if not exists
+    with Session(engine) as session:
+        admin = session.query(User).filter(User.id == 1).first()
+        if not admin:
+            logger.info("Seeding default admin user...")
+            admin = User(id=1, email="admin@chatleads.ai", hashed_password="hashed_placeholder")
+            session.add(admin)
+            session.commit()
+            
     logger.info("Database ready!")
     yield
     # Shutdown
@@ -29,10 +42,11 @@ app = FastAPI(title="ChalLeads AI", lifespan=lifespan)
 # CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"], # In production, you can replace with specific Vercel URL
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"]
 )
 
 # WebSocket endpoint
