@@ -33,9 +33,12 @@ async function createSession(sessionId) {
           await handleMessage(sessionId, sock, msg);
         }
       },
-      (status) => {
+      (status, newSock) => {
         if (status === 'disconnected') {
           sessions.delete(sessionId);
+        } else if (status === 'reconnected' && newSock) {
+          console.log(`[${sessionId}] ✅ Reconnected internally, updating active session map.`);
+          sessions.set(sessionId, newSock);
         }
       }
     );

@@ -31,7 +31,9 @@ async function connectWhatsApp(sessionId, onMessage, onStatusChange) {
     version,
     auth: state,
     logger: P({ level: "silent" }),
-    printQRInTerminal: false
+    printQRInTerminal: false,
+    markOnlineOnConnect: true,
+    syncFullHistory: false
   });
 
   sock.ev.on("creds.update", saveCreds);
@@ -71,8 +73,11 @@ async function connectWhatsApp(sessionId, onMessage, onStatusChange) {
       else {
         const delayMs = isConflict ? 10000 : 5000;
         console.log(`[${sessionId}] 🔄 Reconnecting in ${delayMs/1000}s...`);
+        if (onStatusChange) onStatusChange('reconnecting');
         setTimeout(() => {
-          connectWhatsApp(sessionId, onMessage, onStatusChange);
+          connectWhatsApp(sessionId, onMessage, onStatusChange).then(newSock => {
+            if (onStatusChange) onStatusChange('reconnected', newSock);
+          });
         }, delayMs);
       }
     }

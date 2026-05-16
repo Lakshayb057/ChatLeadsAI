@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 import ollama
 import pytesseract
 from PIL import Image, ImageEnhance, ImageFilter
-import google.generativeai as genai
+from google import genai
 
 load_dotenv()
 
@@ -74,8 +74,7 @@ class ExtractorService:
                 
         if self.gemini_api_key:
             try:
-                genai.configure(api_key=self.gemini_api_key)
-                self.gemini_model = genai.GenerativeModel('gemini-1.5-flash')
+                self.gemini_client = genai.Client(api_key=self.gemini_api_key)
             except Exception as e:
                 print(f"Failed to initialize Gemini: {e}")
 
@@ -369,14 +368,16 @@ class ExtractorService:
     async def _extract_gemini(self, text: str, context: Optional[str] = None, image_bytes: Optional[bytes] = None) -> Dict:
         try:
             prompt = get_system_prompt(text, context)
-            content = [prompt]
+            contents = [prompt]
             
             if image_bytes:
-                image_parts = [{"mime_type": "image/jpeg", "data": image_bytes}]
-                content.append(Image.open(io.BytesIO(image_bytes)))
+                contents.append(Image.open(io.BytesIO(image_bytes)))
                 print("🖼️ Gemini Vision: Analyzing image content...")
 
-            response = self.gemini_model.generate_content(content)
+            response = self.gemini_client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=contents
+            )
             return self._parse_ai_json(response.text)
         except Exception as e:
             print(f"Gemini Error: {e}")

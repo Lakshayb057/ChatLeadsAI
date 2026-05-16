@@ -25,7 +25,8 @@ async def lifespan(app: FastAPI):
     
     # Seed default user if not exists
     with Session(engine) as session:
-        admin = session.query(User).filter(User.id == 1).first()
+        from sqlmodel import select
+        admin = session.exec(select(User).where(User.id == 1)).first()
         if not admin:
             logger.info("Seeding default admin user...")
             admin = User(id=1, email="admin@chatleads.ai", hashed_password="hashed_placeholder")

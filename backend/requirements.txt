@@ -15,4 +15,4 @@ pytesseract
 pillow
 pandas
 openpyxl
-google-generativeai
+google-genai
