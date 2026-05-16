@@ -20,6 +20,15 @@ export function useWebSocket(url: string) {
       setIsConnected(true);
       reconnectAttempts.current = 0;
       if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
+
+      // Start a heartbeat to prevent Render from closing idle connections after 60s
+      const pingInterval = setInterval(() => {
+        if (socket.readyState === WebSocket.OPEN) {
+          socket.send(JSON.stringify({ type: 'ping' }));
+        }
+      }, 30000); // 30 seconds
+
+      socket.addEventListener('close', () => clearInterval(pingInterval));
     };
 
     socket.onmessage = (event) => {

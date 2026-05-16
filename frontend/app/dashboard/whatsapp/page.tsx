@@ -56,6 +56,17 @@ export default function WhatsAppPage() {
     const rawWsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000/ws";
     const wsUrl = rawWsUrl.endsWith("/ws") ? rawWsUrl : `${rawWsUrl.replace(/\/$/, "")}/ws`;
     const ws = new WebSocket(wsUrl);
+    
+    ws.onopen = () => {
+      // Send a heartbeat to keep connection alive indefinitely on Render
+      const pingInterval = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'ping' }));
+        }
+      }, 30000);
+      ws.addEventListener('close', () => clearInterval(pingInterval));
+    };
+
     ws.onmessage = (event) => {
       const message = JSON.parse(event.data);
       if (message.event === 'session_updated') {
