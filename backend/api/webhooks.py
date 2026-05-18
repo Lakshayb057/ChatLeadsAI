@@ -61,19 +61,43 @@ async def process_lead_background(msg: WhatsAppMessage, image_bytes: Optional[by
             
             print(f"📊 Extracted from THIS message - Name: {name}, Mobile: {mobile}, Email: {email}")
             
-            # 4. Validate extracted data
-            has_valid_data = False
+            # 4. Validate and Sanitize extracted data
+            # Rule 1: A valid lead MUST contain contact details (either mobile OR email).
+            # If both are absent, we immediately skip/reject it.
+            has_contact_info = False
             
-            if name != "absent" and name and len(str(name)) > 1:
-                has_valid_data = True
             if mobile != "absent" and mobile and len(str(mobile)) >= 10:
-                has_valid_data = True
+                has_contact_info = True
             if email != "absent" and email and "@" in str(email):
-                has_valid_data = True
+                has_contact_info = True
             
-            if not has_valid_data:
-                print(f"⏭️ No valid lead data in this message, skipping")
+            if not has_contact_info:
+                print(f"⏭️ No contact (mobile) or email (mail) in this message. Skipping as it is not a valid lead.")
                 return
+
+            # Rule 2: Programmatically sanitize and reject irrelevant or generic names.
+            if name != "absent" and name:
+                name_lower = str(name).lower().strip()
+                name_blacklist = [
+                    "dear students", "dear all", "dear student", "dear candidate", "dear parents",
+                    "reporting details", "special pep", "coding test", "announcement", "notice",
+                    "sleeping", "busy", "working", "driving", "available", "hello", "hi", "hey",
+                    "sir", "madam", "admin", "coordinator", "teacher", "host", "moderator",
+                    "whatsapp", "message", "incoming", "outgoing", "class", "session", "dashboard",
+                    "group", "team", "regards"
+                ]
+                
+                is_invalid = False
+                for term in name_blacklist:
+                    if term == name_lower or (len(term) > 4 and term in name_lower):
+                        is_invalid = True
+                        break
+                
+                # Check formatting: name shouldn't be too long or too short, or contain system characters
+                if is_invalid or len(name) > 40 or len(name) < 2:
+                    print(f"⚠️ Rejecting irrelevant/invalid name: '{name}'. Resetting to 'absent'")
+                    name = "absent"
+
             
             # 5. CRITICAL FIX: Check for EXACT duplicate based on mobile OR email
             # Create NEW lead even if same sender, unless mobile/email exactly matches an existing lead

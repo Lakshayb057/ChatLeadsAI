@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 import ollama
 from PIL import Image, ImageEnhance, ImageFilter
 from google import genai
+import httpx
 
 load_dotenv()
 
@@ -21,15 +22,30 @@ def get_system_prompt(text_content: str, context: Optional[str] = None) -> str:
     return f"""
         You are an Expert Lead Generation Agent. Your task is to analyze the provided input (Text or Image) to identify a potential lead.
         
+        CRITICAL PIPELINE INSTRUCTIONS:
+        1. FIRST, analyze the input (Text or Image) to see if a contact (mobile phone number) or email (mail) is present.
+           - A contact is a phone number (e.g., 10-digit mobile number, or with country code).
+           - An email is an email address (e.g., matching standard email pattern, gmail, company email).
+        2. IF AND ONLY IF at least one of these contact details (mobile or email) is present, proceed to find the name of the person (the lead) in the same input.
+        3. IF NEITHER a contact (mobile) NOR an email (mail) is present in the input, this is NOT a lead. You MUST immediately return "absent" for name, mobile, and email, and set confidence to 0.0.
+        
+        RULES FOR NAME EXTRACTION:
+        - The name MUST be a real person's name or a business owner's name.
+        - NEVER extract generic terms, group references, system labels, or irrelevant names. Examples of irrelevant terms to reject as names:
+          * Generic titles/greetings: "Dear Students", "Dear All", "Dear Parents", "Dear Candidate", "Hello Team"
+          * Process/Heading labels: "Reporting Details", "Announcement", "Notice", "Agenda", "Schedule", "Special PEP", "Coding Test"
+          * Roles: "Admin", "Coordinator", "Teacher", "System", "Host", "Moderator"
+          * Action/Status words: "Sleeping", "Busy", "Working", "Available"
+        - If no real, relevant person's name is present, but a contact/email is present, extract the contact/email but return "absent" for the name.
+        
         STEP-BY-STEP PROCESS FOR IMAGES:
         1. Read every single word and number visible in the image (especially if it's a business card).
-        2. From that complete content, identify the most likely:
-           - Name of the person or business owner.
-           - 10-digit mobile number.
-           - Email address (gmail, company mail, etc).
+        2. Follow the CRITICAL PIPELINE INSTRUCTIONS above to determine if contact info exists first.
+        3. Extract fields accordingly.
         
         STEP-BY-STEP PROCESS FOR TEXT:
-        1. Analyze the message and context to find the Name, Mobile, and Email.
+        1. Follow the CRITICAL PIPELINE INSTRUCTIONS above to determine if contact info exists first.
+        2. Extract fields accordingly.
         
         {context_str}
         
@@ -37,7 +53,7 @@ def get_system_prompt(text_content: str, context: Optional[str] = None) -> str:
         {text_content}
         
         REQUIRED JSON FIELDS:
-        1. name: The extracted name or "absent".
+        1. name: The extracted name of the real person or "absent".
         2. mobile: The extracted 10-digit number or "absent".
         3. email: The extracted email or "absent".
         
@@ -56,9 +72,11 @@ def get_system_prompt(text_content: str, context: Optional[str] = None) -> str:
         }}
     """
 
+
 class ExtractorService:
     def __init__(self):
-        self.provider = os.getenv("AI_PROVIDER", "gemini").lower()
+        self.provider = os.getenv("AI_PROVIDER", "groq").lower()
+        self.groq_api_key = os.getenv("GROQ_API_KEY", "")
         
         # Load all potential Gemini keys
         self.gemini_api_keys = []
@@ -146,7 +164,7 @@ class ExtractorService:
             context_str = "\n".join(context_messages) if context_messages else None
             
             if image_bytes:
-                print("🔍 Image detected, routing to Gemini Vision...")
+                print("🔍 Image detected, routing to Vision extraction...")
 
             if not combined_text.strip() and not context_str and not image_bytes:
                 print("ℹ️ Skipping extraction: No content, no context, and no image.")
@@ -158,18 +176,28 @@ class ExtractorService:
             try:
                 if self.provider == "gemini":
                     result = await self._extract_gemini(combined_text, context_str, image_bytes)
+                elif self.provider == "groq":
+                    result = await self._extract_groq(combined_text, context_str, image_bytes)
                 else:
                     result = await self._extract_ollama(combined_text, context_str)
             except Exception as e:
                 print(f"⚠️ Primary provider failed: {e}")
 
-            # Fallback 1: Gemini (Free) - Only if not already tried as primary provider
+            # Fallback 1: Groq - If not tried as primary provider
+            if not result and self.provider != "groq" and self.groq_api_key:
+                print("🔄 Falling back to Groq Vision...")
+                try:
+                    result = await self._extract_groq(combined_text, context_str, image_bytes)
+                except Exception as e:
+                    print(f"⚠️ Groq fallback failed: {e}")
+
+            # Fallback 2: Gemini (Free) - Only if not already tried as primary provider
             if not result and self.provider != "gemini" and self.gemini_api_key:
                 print("🔄 Falling back to Gemini Vision (Free Tier)...")
                 try:
                     result = await self._extract_gemini(combined_text, context_str, image_bytes)
                 except Exception as e:
-                    print(f"⚠️ Fallback provider failed: {e}")
+                    print(f"⚠️ Gemini fallback failed: {e}")
 
             # Final Fallback: Regex Survival Mode
             if not result:
@@ -251,6 +279,37 @@ class ExtractorService:
             if matches:
                 email = matches[0].lower()
                 break
+
+        # NEW RULE: If neither mobile nor email are present, immediately reject as not a valid lead!
+        if mobile == "absent" and email == "absent":
+            return {
+                "name": "absent",
+                "mobile": "absent",
+                "email": "absent",
+                "lead_score": "Cold",
+                "confidence": 0.0
+            }
+        
+        # List of common words/phrases that are NOT names (Blacklist)
+        blacklist = [
+            "sleeping", "busy", "working", "driving", "available", "hello", "hi", "hey", "hlo", 
+            "dear", "sir", "madam", "the", "this", "that", "ok", "okay", "yes", "no", "sure", 
+            "thanks", "thank", "good", "fine", "bye", "please", "pls", "well", "cool", "done", 
+            "perfect", "yep", "yeah", "incoming", "outgoing", "message", "students", "student", 
+            "teacher", "details", "reporting", "special", "coding", "test", "summer", "term", 
+            "announcement", "notice", "alert", "attention", "regards", "group", "admin", "joined", 
+            "left", "added", "removed", "created", "whatsapp", "class", "session", "dashboard"
+        ]
+
+        def is_valid_name(val: str) -> bool:
+            if not val or len(val) < 2 or len(val) > 40:
+                return False
+            val_lower = val.lower()
+            # If any blacklisted word is a substring of the name, or matches fully
+            for word in blacklist:
+                if word == val_lower or (len(word) > 4 and word in val_lower):
+                    return False
+            return True
         
         # Extract name
         name = "absent"
@@ -261,23 +320,23 @@ class ExtractorService:
                 continue
             # Check if it's all caps or title case
             if sum(1 for c in line if c.isupper()) / len(line) > 0.5:
-                name = line.title()
-                break
+                candidate = line.title()
+                if is_valid_name(candidate):
+                    name = candidate
+                    break
             # Check if it contains typical name patterns
             if re.match(r'^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+$', line):
-                name = line
-                break
+                if is_valid_name(line):
+                    name = line
+                    break
         
         if name == "absent":
-            # List of common words/phrases that are NOT names (Blacklist)
-            blacklist = ["sleeping", "busy", "working", "driving", "available", "hello", "hi", "hey", "hlo", "dear", "sir", "madam", "the", "this", "that", "ok", "okay", "yes", "no", "sure", "thanks", "thank", "good", "fine", "bye", "please", "pls", "well", "cool", "done", "perfect", "yep", "yeah", "incoming", "outgoing", "message"]
-            
             # 1. Try to find name with prefix (I am, My name is, etc.)
             for pattern in patterns['name']:
                 match = re.search(pattern, clean_text) 
                 if match:
                     extracted = match.group(1).strip()
-                    if not any(word in extracted.lower() for word in blacklist):
+                    if is_valid_name(extracted):
                         name = extracted
                         break
             
@@ -287,10 +346,10 @@ class ExtractorService:
                 start_match = re.match(r'^([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})[\s.,]', clean_text)
                 if start_match:
                     extracted = start_match.group(1).strip()
-                    if not any(word in extracted.lower() for word in blacklist):
+                    if is_valid_name(extracted):
                         name = extracted
         
-        # If no name found, strictly return "absent" as requested (sender_name is already None from caller)
+        # If no name found, strictly return "absent" as requested
         if name == "absent":
             name = "absent"
 
@@ -316,6 +375,7 @@ class ExtractorService:
             "confidence": confidence
         }
 
+
     async def _extract_ollama(self, text: str, context: Optional[str] = None) -> Dict:
         try:
             prompt = get_system_prompt(text, context)
@@ -324,6 +384,86 @@ class ExtractorService:
         except Exception as e:
             print(f"Ollama Error: {e}")
             return None
+
+    async def _extract_groq(self, text: str, context: Optional[str] = None, image_bytes: Optional[bytes] = None) -> Dict:
+        api_key = self.groq_api_key
+        if not api_key:
+            print("❌ No Groq API key available.")
+            return None
+
+        prompt = get_system_prompt(text, context)
+        
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        # Build contents array in OpenAI Vision format
+        content_items = [{"type": "text", "text": prompt}]
+        
+        if image_bytes:
+            try:
+                import base64
+                encoded = base64.b64encode(image_bytes).decode('utf-8')
+                content_items.append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{encoded}"
+                    }
+                })
+                print("🖼️ Groq Vision: Encoding image for extraction...")
+            except Exception as e:
+                print(f"❌ Failed to encode image for Groq: {e}")
+
+        payload = {
+            "model": "llama-3.2-11b-vision-preview",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": content_items
+                }
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.1
+        }
+        
+        # Call Groq API with 3 retries and exponential backoff
+        max_retries = 3
+        retry_delay = 2.0
+        
+        for attempt in range(max_retries + 1):
+            try:
+                print(f"🤖 Groq API: Extracting data using llama-3.2-11b-vision-preview (attempt {attempt + 1}/{max_retries + 1})...")
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    response = await client.post(
+                        "https://api.groq.com/openai/v1/chat/completions",
+                        headers=headers,
+                        json=payload
+                    )
+                
+                if response.status_code == 200:
+                    res_json = response.json()
+                    ai_response = res_json["choices"][0]["message"]["content"]
+                    print("✅ Groq API call succeeded.")
+                    return self._parse_ai_json(ai_response)
+                
+                elif response.status_code == 429:
+                    print(f"⚠️ Groq Rate Limited (429): {response.text}")
+                    if attempt == max_retries:
+                        break
+                    wait_sec = retry_delay * (2 ** attempt) + random.uniform(0.0, 1.0)
+                    print(f"⏳ Sleeping for {wait_sec:.2f}s before retry...")
+                    await asyncio.sleep(wait_sec)
+                else:
+                    print(f"❌ Groq API returned status {response.status_code}: {response.text}")
+                    break
+            except Exception as e:
+                print(f"❌ Groq Connection Error: {e}")
+                if attempt == max_retries:
+                    break
+                await asyncio.sleep(2.0)
+                
+        return None
 
 
 
