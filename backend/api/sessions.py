@@ -136,10 +136,16 @@ async def create_new_session(
     return {"status": "initializing", "session_id": session_id}
 
 @router.post("/revoke/{session_id}")
-async def revoke_session(session_id: str, db: Session = Depends(get_session)):
+async def revoke_session(
+    session_id: str,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_fallback)
+):
     session = db.query(WhatsAppSession).filter(WhatsAppSession.session_id == session_id).first()
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
+    if current_user.role != "superadmin" and session.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden: You do not own this session")
     
     try:
         async with httpx.AsyncClient() as client:
@@ -160,10 +166,16 @@ async def revoke_session(session_id: str, db: Session = Depends(get_session)):
     return {"status": "revoked"}
 
 @router.get("/status/{session_id}")
-async def get_status(session_id: str, db: Session = Depends(get_session)):
+async def get_status(
+    session_id: str,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_fallback)
+):
     session = db.query(WhatsAppSession).filter(WhatsAppSession.session_id == session_id).first()
     if not session:
         return {"status": "disconnected", "qr": None}
+    if current_user.role != "superadmin" and session.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden: Access denied")
     return {"status": session.status, "qr": session.qr_code}
 
 @router.get("/")
@@ -178,11 +190,17 @@ async def list_sessions(
     return sessions
 
 @router.delete("/{session_id}")
-async def delete_session(session_id: str, db: Session = Depends(get_session)):
+async def delete_session(
+    session_id: str,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_fallback)
+):
     try:
         session = db.query(WhatsAppSession).filter(WhatsAppSession.session_id == session_id).first()
         if not session:
             raise HTTPException(status_code=404, detail="Session not found")
+        if current_user.role != "superadmin" and session.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Forbidden: You do not own this session")
         
         # 1. KILL the instance in the WhatsApp Hub
         try:
@@ -208,6 +226,8 @@ async def delete_session(session_id: str, db: Session = Depends(get_session)):
         })
 
         return {"status": "deleted"}
+    except HTTPException as he:
+        raise he
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))

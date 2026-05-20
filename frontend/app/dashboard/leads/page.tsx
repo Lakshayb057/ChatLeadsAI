@@ -34,11 +34,16 @@ export default function LeadsPage() {
 
   const fetchLeads = async () => {
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
       const params = new URLSearchParams();
       if (searchTerm) params.append('query', searchTerm);
       if (filterSession) params.append('session_id', filterSession);
       if (filterScore) params.append('score', filterScore);
-      const res = await fetch(`${apiUrl}/contacts/?${params}`);
+      const res = await fetch(`${apiUrl}/contacts/?${params}`, { headers });
       if (!res.ok) throw new Error();
       setLeads(await res.json());
       setError(false); setLoading(false);
@@ -47,7 +52,12 @@ export default function LeadsPage() {
 
   const fetchSessions = async () => {
     try {
-      const res = await fetch(`${apiUrl}/contacts/sessions`);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetch(`${apiUrl}/contacts/sessions`, { headers });
       if (res.ok) setAvailableSessions(await res.json());
     } catch {}
   };
@@ -55,22 +65,34 @@ export default function LeadsPage() {
   const openExportModal = () => { fetchSessions(); setSelectedExportSessions(filterSession ? [filterSession] : []); setShowExportModal(true); };
 
   const handleExport = () => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const params = new URLSearchParams();
     if (searchTerm) params.append('query', searchTerm);
     if (filterScore) params.append('score', filterScore);
     selectedExportSessions.forEach(s => params.append('session_ids', s));
+    if (token) params.append('token', token);
     window.location.href = `${apiUrl}/contacts/export?${params}`;
     setShowExportModal(false);
   };
 
   const confirmDelete = async () => {
     if (!deleteId) return;
-    await fetch(`${apiUrl}/contacts/${deleteId}`, { method: 'DELETE' });
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    await fetch(`${apiUrl}/contacts/${deleteId}`, { method: 'DELETE', headers });
     setDeleteId(null); fetchLeads();
   };
 
   const confirmDeleteAll = async () => {
-    await fetch(`${apiUrl}/contacts/all`, { method: 'DELETE' });
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const headers: HeadersInit = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    await fetch(`${apiUrl}/contacts/all`, { method: 'DELETE', headers });
     setShowDeleteAll(false); fetchLeads();
   };
 

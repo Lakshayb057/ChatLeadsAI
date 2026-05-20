@@ -1,15 +1,43 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select
 from database import get_session
-from models import Contact, WhatsAppSession
+from models import Contact, WhatsAppSession, User
 from typing import List, Optional
 from datetime import datetime
+from core.auth import get_current_user, oauth2_scheme, SECRET_KEY, ALGORITHM
+from jose import jwt, JWTError
 
 router = APIRouter(prefix="/contacts", tags=["contacts"])
+
+def get_user_from_token_or_query(
+    token: Optional[str] = Depends(oauth2_scheme),
+    token_query: Optional[str] = Query(None, alias="token"),
+    db: Session = Depends(get_session)
+) -> User:
+    active_token = token or token_query
+    if not active_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    try:
+        payload = jwt.decode(active_token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise HTTPException(status_code=401, detail="Invalid token claims")
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
+        
+    user = db.exec(select(User).where(User.email == email)).first()
+    if user is None:
+        raise HTTPException(status_code=401, detail="User not found")
+    return user
 
 @router.get("/")
 def get_contacts(
     db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
     session_id: Optional[str] = None,
     score: Optional[str] = None,
     query: Optional[str] = None,
@@ -17,6 +45,8 @@ def get_contacts(
     offset: int = Query(0, ge=0)
 ):
     statement = select(Contact).order_by(Contact.created_at.desc())
+    if current_user.role != "superadmin":
+        statement = statement.where(Contact.user_id == current_user.id)
     
     if session_id:
         statement = statement.where(Contact.session_id == session_id)
@@ -33,12 +63,17 @@ def get_contacts(
     return db.exec(statement).all()
 
 @router.get("/sessions")
-def get_sessions(db: Session = Depends(get_session)):
+def get_sessions(
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
     """Get all available WhatsApp sessions with lead counts directly from contacts"""
     from sqlalchemy import func
     
     # Get distinct session IDs and their lead counts directly from the Contact table
     statement = select(Contact.session_id, func.count(Contact.id)).group_by(Contact.session_id)
+    if current_user.role != "superadmin":
+        statement = statement.where(Contact.user_id == current_user.id)
     results = db.exec(statement).all()
     
     sessions_data = []
@@ -58,7 +93,8 @@ async def export_contacts(
     session_ids: List[str] = Query(None),
     score: Optional[str] = None,
     query: Optional[str] = None,
-    db: Session = Depends(get_session)
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_user_from_token_or_query)
 ):
     """
     Export leads applying all dashboard filters to Excel
@@ -70,6 +106,8 @@ async def export_contacts(
     print(f"📊 Exporting leads with filters: sessions={session_ids}, score={score}, query={query}")
     
     statement = select(Contact).order_by(Contact.created_at.desc())
+    if current_user.role != "superadmin":
+        statement = statement.where(Contact.user_id == current_user.id)
     
     if session_ids:
         statement = statement.where(Contact.session_id.in_(session_ids))
@@ -137,8 +175,14 @@ async def export_contacts(
     )
 
 @router.delete("/all")
-async def delete_all_contacts(db: Session = Depends(get_session)):
-    count = db.query(Contact).delete()
+async def delete_all_contacts(
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    if current_user.role == "superadmin":
+        count = db.query(Contact).delete()
+    else:
+        count = db.query(Contact).filter(Contact.user_id == current_user.id).delete()
     db.commit()
     
     # Notify all dashboards
@@ -148,7 +192,18 @@ async def delete_all_contacts(db: Session = Depends(get_session)):
     return {"status": "success", "message": f"Deleted {count} contacts"}
 
 @router.delete("/session/{session_id}")
-async def delete_session_contacts(session_id: str, db: Session = Depends(get_session)):
+async def delete_session_contacts(
+    session_id: str,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    # Verify session belongs to user
+    session = db.query(WhatsAppSession).filter(WhatsAppSession.session_id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if current_user.role != "superadmin" and session.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden: You do not own this session")
+        
     count = db.query(Contact).filter(Contact.session_id == session_id).delete()
     db.commit()
     
@@ -158,10 +213,16 @@ async def delete_session_contacts(session_id: str, db: Session = Depends(get_ses
     return {"status": "success", "message": f"Deleted {count} contacts from session {session_id}"}
 
 @router.delete("/{contact_id}")
-async def delete_contact(contact_id: int, db: Session = Depends(get_session)):
+async def delete_contact(
+    contact_id: int,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
     contact = db.get(Contact, contact_id)
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
+    if current_user.role != "superadmin" and contact.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden: You do not own this contact")
     
     db.delete(contact)
     db.commit()

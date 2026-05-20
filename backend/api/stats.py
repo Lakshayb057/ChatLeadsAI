@@ -1,35 +1,63 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import Session, select, func
 from database import get_session
-from models import Contact, WhatsAppSession
+from models import Contact, WhatsAppSession, User
 from typing import Dict, List
+from core.auth import get_current_user
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
 @router.get("/overview")
-async def get_overview_stats(db: Session = Depends(get_session)):
+async def get_overview_stats(
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
     try:
-        # 1. Total Counts with safety
-        total_leads = db.query(func.count(Contact.id)).scalar() or 0
-        active_sessions = db.query(func.count(WhatsAppSession.id)).filter(WhatsAppSession.status == "connected").scalar() or 0
-        
-        # 2. Lead Scoring Breakdown
-        hot_leads = db.query(func.count(Contact.id)).filter(Contact.lead_score == "Hot").scalar() or 0
-        warm_leads = db.query(func.count(Contact.id)).filter(Contact.lead_score == "Warm").scalar() or 0
-        cold_leads = db.query(func.count(Contact.id)).filter(Contact.lead_score == "Cold").scalar() or 0
-        
-        # 3. Performance by Session
-        session_perf = []
-        sessions = db.query(WhatsAppSession).all()
-        for s in sessions:
-            count = db.query(func.count(Contact.id)).filter(Contact.session_id == s.session_id).scalar() or 0
-            session_perf.append({
-                "name": s.session_id.replace("_", " ").capitalize(),
-                "leads": count
-            })
+        if current_user.role == "superadmin":
+            # 1. Total Counts with safety
+            total_leads = db.query(func.count(Contact.id)).scalar() or 0
+            active_sessions = db.query(func.count(WhatsAppSession.id)).filter(WhatsAppSession.status == "connected").scalar() or 0
+            
+            # 2. Lead Scoring Breakdown
+            hot_leads = db.query(func.count(Contact.id)).filter(Contact.lead_score == "Hot").scalar() or 0
+            warm_leads = db.query(func.count(Contact.id)).filter(Contact.lead_score == "Warm").scalar() or 0
+            cold_leads = db.query(func.count(Contact.id)).filter(Contact.lead_score == "Cold").scalar() or 0
+            
+            # 3. Performance by Session
+            session_perf = []
+            sessions = db.query(WhatsAppSession).all()
+            for s in sessions:
+                count = db.query(func.count(Contact.id)).filter(Contact.session_id == s.session_id).scalar() or 0
+                session_perf.append({
+                    "name": s.session_id.replace("_", " ").capitalize(),
+                    "leads": count
+                })
 
-        # 4. Recent Activity
-        recent_leads = db.query(Contact).order_by(Contact.created_at.desc()).limit(5).all()
+            # 4. Recent Activity
+            recent_leads = db.query(Contact).order_by(Contact.created_at.desc()).limit(5).all()
+        else:
+            # 1. Total Counts with safety
+            total_leads = db.query(func.count(Contact.id)).filter(Contact.user_id == current_user.id).scalar() or 0
+            active_sessions = db.query(func.count(WhatsAppSession.id)).filter(WhatsAppSession.status == "connected", WhatsAppSession.user_id == current_user.id).scalar() or 0
+            
+            # 2. Lead Scoring Breakdown
+            hot_leads = db.query(func.count(Contact.id)).filter(Contact.lead_score == "Hot", Contact.user_id == current_user.id).scalar() or 0
+            warm_leads = db.query(func.count(Contact.id)).filter(Contact.lead_score == "Warm", Contact.user_id == current_user.id).scalar() or 0
+            cold_leads = db.query(func.count(Contact.id)).filter(Contact.lead_score == "Cold", Contact.user_id == current_user.id).scalar() or 0
+            
+            # 3. Performance by Session
+            session_perf = []
+            sessions = db.query(WhatsAppSession).filter(WhatsAppSession.user_id == current_user.id).all()
+            for s in sessions:
+                count = db.query(func.count(Contact.id)).filter(Contact.session_id == s.session_id, Contact.user_id == current_user.id).scalar() or 0
+                session_perf.append({
+                    "name": s.session_id.replace("_", " ").capitalize(),
+                    "leads": count
+                })
+
+            # 4. Recent Activity
+            recent_leads = db.query(Contact).filter(Contact.user_id == current_user.id).order_by(Contact.created_at.desc()).limit(5).all()
+
         activity = [{
             "id": l.id,
             "name": l.extracted_name or "Anonymous",

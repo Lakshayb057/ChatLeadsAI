@@ -234,7 +234,12 @@ export default function DashboardOverview() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${apiUrl}/stats/overview`);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const response = await fetch(`${apiUrl}/stats/overview`, { headers });
       const data = await response.json();
       setStats(data);
       setLoading(false);
