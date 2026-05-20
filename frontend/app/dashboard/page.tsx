@@ -235,11 +235,24 @@ export default function DashboardOverview() {
   const fetchStats = async () => {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      const headers: HeadersInit = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      if (!token) {
+        window.location.href = '/login';
+        return;
       }
+      const headers: HeadersInit = { 'Authorization': `Bearer ${token}` };
       const response = await fetch(`${apiUrl}/stats/overview`, { headers });
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          localStorage.clear();
+          window.location.href = '/login';
+          return;
+        }
+        // Non-auth error: leave loading=false, stats=null → spinner stays
+        setLoading(false);
+        return;
+      }
+
       const data = await response.json();
       setStats(data);
       setLoading(false);
@@ -278,7 +291,7 @@ export default function DashboardOverview() {
     );
   }
 
-  const maxLeads = Math.max(...stats.fleet.map(f => f.leads), 1);
+  const maxLeads = Math.max(...(stats.fleet ?? []).map(f => f.leads), 1);
 
   return (
     <div className="space-y-8 pb-20 animate-fade-in">
