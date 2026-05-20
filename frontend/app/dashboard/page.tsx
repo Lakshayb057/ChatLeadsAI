@@ -61,13 +61,13 @@ function StatCard({ title, value, label, icon, gradient, glowColor, trend }: any
       </div>
 
       {/* Value */}
-      <div className="mb-2 flex items-end gap-3">
-        <h4 className="text-5xl font-black text-white tracking-tighter leading-none">
-          {typeof value === 'number' ? <AnimatedNumber value={value} /> : value}
-        </h4>
-      </div>
+    <div className="mb-2 flex items-end gap-3">
+      <h4 className="text-5xl font-black text-[var(--text-primary)] tracking-tighter leading-none">
+        {typeof value === 'number' ? <AnimatedNumber value={value} /> : value}
+      </h4>
+    </div>
 
-      <p className="text-xs font-bold uppercase tracking-[0.2em] mb-4" style={{ color: '#6b6190' }}>{label}</p>
+    <p className="text-xs font-bold uppercase tracking-[0.2em] mb-4" style={{ color: 'var(--text-secondary)' }}>{label}</p>
 
       {/* Trend */}
       <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest"
@@ -91,17 +91,17 @@ function DistributionRow({ label, count, total, gradient, glowColor }: any) {
 
   return (
     <div className="space-y-2.5">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-black uppercase tracking-widest" style={{ color: '#6b6190' }}>{label}</span>
-        <span className="text-sm font-black text-white">{count}</span>
-      </div>
-      <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(139,92,246,0.08)' }}>
-        <div
-          className="h-full rounded-full transition-all duration-1000 ease-out"
-          style={{ width: `${width}%`, background: gradient, boxShadow: `0 0 8px ${glowColor}60` }}
-        />
-      </div>
-      <p className="text-[10px] font-bold" style={{ color: '#3d3660' }}>
+    <div className="flex items-center justify-between">
+      <span className="text-xs font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{label}</span>
+      <span className="text-sm font-black text-[var(--text-primary)]">{count}</span>
+    </div>
+    <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(124,58,237,0.06)' }}>
+      <div
+        className="h-full rounded-full transition-all duration-1000 ease-out"
+        style={{ width: `${width}%`, background: gradient, boxShadow: `0 0 8px ${glowColor}60` }}
+      />
+    </div>
+    <p className="text-[10px] font-bold" style={{ color: 'var(--text-ghost)' }}>
         {percent.toFixed(1)}% of total
       </p>
     </div>
@@ -143,10 +143,10 @@ function FleetBar({ session, maxLeads, index }: { session: { name: string; leads
           </div>
         </div>
       </div>
-      <p className="text-[9px] font-black uppercase tracking-widest text-center truncate w-full"
-        style={{ color: '#6b6190' }}>
-        {session.name}
-      </p>
+    <p className="text-[9px] font-black uppercase tracking-widest text-center truncate w-full"
+      style={{ color: 'var(--text-muted)' }}>
+      {session.name}
+    </p>
     </div>
   );
 }
@@ -160,17 +160,17 @@ function FeedItem({ item, index }: { item: any; index: number }) {
     <div
       className="flex items-center gap-5 p-5 rounded-2xl transition-all duration-500 group cursor-pointer animate-fade-in"
       style={{
-        background: 'rgba(139,92,246,0.03)',
-        border: '1px solid rgba(139,92,246,0.06)',
+        background: 'var(--bg-deep)',
+        border: '1px solid var(--border-subtle)',
         animationDelay: `${index * 0.08}s`,
       }}
       onMouseEnter={e => {
-        e.currentTarget.style.background = 'rgba(139,92,246,0.07)';
-        e.currentTarget.style.borderColor = 'rgba(139,92,246,0.2)';
+        e.currentTarget.style.background = 'var(--bg-hover)';
+        e.currentTarget.style.borderColor = 'var(--border-glow)';
       }}
       onMouseLeave={e => {
-        e.currentTarget.style.background = 'rgba(139,92,246,0.03)';
-        e.currentTarget.style.borderColor = 'rgba(139,92,246,0.06)';
+        e.currentTarget.style.background = 'var(--bg-deep)';
+        e.currentTarget.style.borderColor = 'var(--border-subtle)';
       }}>
 
       {/* Avatar */}
@@ -180,26 +180,26 @@ function FeedItem({ item, index }: { item: any; index: number }) {
         background: isHot
           ? 'linear-gradient(135deg, rgba(245,158,11,0.2), rgba(239,68,68,0.15))'
           : isWarm
-          ? 'linear-gradient(135deg, rgba(139,92,246,0.2), rgba(124,58,237,0.15))'
-          : 'rgba(139,92,246,0.06)',
-        border: isHot ? '1px solid rgba(245,158,11,0.3)' : isWarm ? '1px solid rgba(139,92,246,0.3)' : '1px solid rgba(139,92,246,0.1)',
+          ? 'linear-gradient(135deg, rgba(124,58,237,0.15), rgba(124,58,237,0.08))'
+          : 'var(--bg-hover)',
+        border: isHot ? '1px solid rgba(245,158,11,0.3)' : isWarm ? '1px solid var(--border-bright)' : '1px solid var(--border-glow)',
       }}>
-        <User size={20} className={isHot ? 'text-yellow-400' : isWarm ? 'text-purple-400' : 'text-[#3d3660]'} />
+        <User size={20} className={isHot ? 'text-yellow-500' : isWarm ? 'text-[var(--purple-mid)]' : 'text-[var(--text-ghost)]'} />
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <h4 className="font-black text-white text-sm truncate group-hover:text-purple-300 transition-colors">
+        <h4 className="font-black text-[var(--text-primary)] text-sm truncate group-hover:text-[var(--purple-mid)] transition-colors">
           {item.name}
         </h4>
-        <p className="text-[10px] font-bold flex items-center gap-2 mt-0.5" style={{ color: '#6b6190' }}>
+        <p className="text-[10px] font-bold flex items-center gap-2 mt-0.5" style={{ color: 'var(--text-secondary)' }}>
           <Clock size={10} />
           {new Date(item.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          <span className="w-1 h-1 rounded-full" style={{ backgroundColor: '#3d3660' }} />
-          <span className="text-purple-500 uppercase tracking-widest">via {item.session.replace('_', ' ')}</span>
+          <span className="w-1 h-1 rounded-full" style={{ backgroundColor: 'var(--text-ghost)' }} />
+          <span className="text-[var(--purple-mid)] uppercase tracking-widest">via {item.session.replace('_', ' ')}</span>
         </p>
         {item.message && (
-          <p className="text-[11px] italic mt-1 truncate" style={{ color: '#3d3660' }}>
+          <p className="text-[11px] italic mt-1 truncate" style={{ color: 'var(--text-muted)' }}>
             "{item.message}"
           </p>
         )}
@@ -214,7 +214,7 @@ function FeedItem({ item, index }: { item: any; index: number }) {
 
       {/* Arrow */}
       <div className="w-8 h-8 rounded-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 shrink-0"
-        style={{ background: 'rgba(139,92,246,0.1)', color: '#8b5cf6' }}>
+        style={{ background: 'var(--bg-hover)', color: 'var(--purple-mid)' }}>
         <ArrowUpRight size={16} />
       </div>
     </div>
@@ -264,8 +264,8 @@ export default function DashboardOverview() {
           </div>
         </div>
         <div className="text-center space-y-2">
-          <p className="text-white font-black text-lg">Initializing War Room</p>
-          <p className="text-xs font-bold uppercase tracking-widest animate-pulse" style={{ color: '#6b6190' }}>
+          <p className="text-[var(--text-primary)] font-black text-lg">Initializing War Room</p>
+          <p className="text-xs font-bold uppercase tracking-widest animate-pulse" style={{ color: 'var(--text-secondary)' }}>
             Syncing intelligence pipeline...
           </p>
         </div>
@@ -279,19 +279,19 @@ export default function DashboardOverview() {
     <div className="space-y-8 pb-20 animate-fade-in">
 
       {/* ── Header ── */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div>
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.3), rgba(139,92,246,0.15))', border: '1px solid rgba(139,92,246,0.3)' }}>
-              <Sparkles size={16} className="text-purple-400" />
-            </div>
-            <p className="text-xs font-black uppercase tracking-[0.3em] text-purple-500">System Command</p>
+    <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <div>
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center"
+            style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-bright)' }}>
+            <Sparkles size={16} className="text-[var(--purple-mid)]" />
           </div>
-          <h2 className="text-5xl font-black tracking-tight text-white mb-2">
-            Intelligence <span className="gradient-text">War Room</span>
-          </h2>
-          <p className="font-medium" style={{ color: '#a89fd4' }}>
+          <p className="text-xs font-black uppercase tracking-[0.3em] text-[var(--purple-mid)]">System Command</p>
+        </div>
+        <h2 className="text-5xl font-black tracking-tight text-[var(--text-primary)] mb-2">
+          Intelligence <span className="gradient-text">War Room</span>
+        </h2>
+        <p className="font-medium" style={{ color: 'var(--text-secondary)' }}>
             Real-time oversight of your automated lead generation fleet.
           </p>
         </div>
@@ -351,13 +351,13 @@ export default function DashboardOverview() {
         <div className="xl:col-span-2 glass-card rounded-3xl p-8 flex flex-col">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h3 className="text-xl font-black text-white mb-1">Fleet Performance</h3>
-              <p className="text-xs font-bold" style={{ color: '#6b6190' }}>
+              <h3 className="text-xl font-black text-[var(--text-primary)] mb-1">Fleet Performance</h3>
+              <p className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
                 Leads generated per WhatsApp session
               </p>
             </div>
             <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: 'rgba(139,92,246,0.1)', color: '#8b5cf6' }}>
+               style={{ background: 'var(--bg-hover)', color: 'var(--purple-mid)' }}>
               <BarChart2 size={20} />
             </div>
           </div>
@@ -370,10 +370,10 @@ export default function DashboardOverview() {
             ) : (
               <div className="w-full flex flex-col items-center justify-center py-16 text-center space-y-4">
                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                  style={{ background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.12)' }}>
-                  <Smartphone size={28} style={{ color: '#3d3660' }} />
+                   style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-subtle)' }}>
+                  <Smartphone size={28} style={{ color: 'var(--text-ghost)' }} />
                 </div>
-                <p className="text-sm font-bold italic" style={{ color: '#3d3660' }}>
+                <p className="text-sm font-bold italic" style={{ color: 'var(--text-ghost)' }}>
                   No sessions connected yet...
                 </p>
               </div>
@@ -383,8 +383,8 @@ export default function DashboardOverview() {
 
         {/* Quality Mix */}
         <div className="glass-card rounded-3xl p-8 flex flex-col">
-          <h3 className="text-xl font-black text-white mb-1">Quality Mix</h3>
-          <p className="text-xs font-bold mb-8" style={{ color: '#6b6190' }}>Lead scoring distribution</p>
+          <h3 className="text-xl font-black text-[var(--text-primary)] mb-1">Quality Mix</h3>
+          <p className="text-xs font-bold mb-8" style={{ color: 'var(--text-secondary)' }}>Lead scoring distribution</p>
 
           <div className="flex-1 flex flex-col justify-center space-y-7">
             <DistributionRow
@@ -405,22 +405,22 @@ export default function DashboardOverview() {
               label="❄️ Cold Leads"
               count={stats.scoring.cold}
               total={stats.summary.total_leads}
-              gradient="linear-gradient(90deg, #3d3660, #1e1b4b)"
-              glowColor="#4c1d95"
+              gradient="linear-gradient(90deg, #b3acd8, #5c538a)"
+              glowColor="#7c3aed"
             />
           </div>
 
           {/* Insight */}
           <div className="mt-8 p-5 rounded-2xl"
-            style={{ background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(139,92,246,0.15)' }}>
+             style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-glow)' }}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ background: 'rgba(139,92,246,0.15)' }}>
-                <TrendingUp size={18} className="text-purple-400" />
+                 style={{ background: 'rgba(124,58,237,0.1)' }}>
+                <TrendingUp size={18} className="text-[var(--purple-mid)]" />
               </div>
               <div>
-                <p className="text-xs font-black text-purple-300">Growth Detected</p>
-                <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: '#6b6190' }}>
+                <p className="text-xs font-black text-[var(--purple-mid)]">Growth Detected</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary)' }}>
                   High performance signals
                 </p>
               </div>
@@ -433,16 +433,16 @@ export default function DashboardOverview() {
       <div className="glass-card rounded-3xl p-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h3 className="text-xl font-black text-white mb-1">Live Activity Feed</h3>
-            <p className="text-xs font-bold" style={{ color: '#6b6190' }}>
+            <h3 className="text-xl font-black text-[var(--text-primary)] mb-1">Live Activity Feed</h3>
+            <p className="text-xs font-bold" style={{ color: 'var(--text-secondary)' }}>
               Real-time extractions across your fleet
             </p>
           </div>
           <a href="/dashboard/leads"
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
-            style={{ background: 'rgba(139,92,246,0.08)', color: '#8b5cf6', border: '1px solid rgba(139,92,246,0.15)' }}
-            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.15)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.08)'; }}>
+             className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
+             style={{ background: 'var(--bg-hover)', color: 'var(--purple-mid)', border: '1px solid var(--border-glow)' }}
+             onMouseEnter={e => { e.currentTarget.style.background = 'var(--border-subtle)'; }}
+             onMouseLeave={e => { e.currentTarget.style.background = 'var(--bg-hover)'; }}>
             View All <ChevronRight size={12} />
           </a>
         </div>
@@ -455,11 +455,11 @@ export default function DashboardOverview() {
           ) : (
             <div className="py-24 text-center">
               <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
-                style={{ background: 'rgba(139,92,246,0.06)', border: '1px dashed rgba(139,92,246,0.15)' }}>
-                <Activity size={28} style={{ color: '#3d3660' }} />
+                 style={{ background: 'var(--bg-hover)', border: '1px dashed var(--border-glow)' }}>
+                <Activity size={28} style={{ color: 'var(--text-ghost)' }} />
               </div>
-              <p className="font-black text-white mb-2">No Recent Activity</p>
-              <p className="text-xs font-bold uppercase tracking-widest" style={{ color: '#3d3660' }}>
+              <p className="font-black text-[var(--text-primary)] mb-2">No Recent Activity</p>
+              <p className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-ghost)' }}>
                 Awaiting first lead extraction...
               </p>
             </div>
