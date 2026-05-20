@@ -1,6 +1,21 @@
 import os
 from datetime import datetime, timedelta
 from typing import Optional
+
+# Monkeypatch bcrypt to fix passlib incompatibility with modern bcrypt (>4.0.0) on Python 3.12+
+try:
+    import bcrypt
+    original_hashpw = bcrypt.hashpw
+    def patched_hashpw(password, salt):
+        if isinstance(password, bytes) and len(password) > 72:
+            password = password[:72]
+        elif isinstance(password, str) and len(password.encode('utf-8')) > 72:
+            password = password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
+        return original_hashpw(password, salt)
+    bcrypt.hashpw = patched_hashpw
+except ImportError:
+    pass
+
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from dotenv import load_dotenv

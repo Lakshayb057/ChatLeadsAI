@@ -218,18 +218,44 @@ const PORT = process.env.PORT || process.env.CONTROL_PORT || 8001;
 app.listen(PORT, async () => {
   console.log(`🚀 Multi-Session Hub running on port ${PORT}`);
   
+  // Wait for backend to be fully ready before restoring fleet
+  await waitForBackend();
+
   try {
     console.log("📂 Restoring session fleet from database...");
     const response = await axios.get(`${BACKEND_URL}/sessions/`);
     const dbSessions = response.data;
     
-    for (const session of dbSessions) {
-      console.log(`[Fleet] Waking up: ${session.session_id}`);
-      await createSession(session.session_id);
-      await new Promise(resolve => setTimeout(resolve, 1500));
+    if (dbSessions.length === 0) {
+      console.log("[Fleet] No sessions in DB. Starting primary_account...");
+      await createSession("primary_account");
+    } else {
+      for (const session of dbSessions) {
+        console.log(`[Fleet] Waking up: ${session.session_id}`);
+        await createSession(session.session_id);
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
     }
   } catch (err) {
     console.error("❌ Fleet restoration failed:", err.message);
+    console.log("[Fleet] Falling back to primary_account...");
     createSession("primary_account");
   }
 });
+
+async function waitForBackend(maxAttempts = 20, intervalMs = 3000) {
+  console.log(`⏳ Waiting for backend at ${BACKEND_URL}/health ...`);
+  for (let i = 1; i <= maxAttempts; i++) {
+    try {
+      const res = await axios.get(`${BACKEND_URL}/health`, { timeout: 2000 });
+      if (res.status === 200) {
+        console.log(`✅ Backend is ready! (attempt ${i})`);
+        return;
+      }
+    } catch (e) {
+      console.log(`⏳ Backend not ready yet (attempt ${i}/${maxAttempts})... retrying in ${intervalMs/1000}s`);
+    }
+    await new Promise(resolve => setTimeout(resolve, intervalMs));
+  }
+  console.warn("⚠️ Backend did not respond after max attempts. Proceeding anyway...");
+}

@@ -43,15 +43,12 @@ async function connectWhatsApp(sessionId, onMessage, onStatusChange) {
     
     if (qr) {
       console.log(`[${sessionId}] New QR Generated`);
-      try {
-        await axios.post(`${BACKEND_URL}/sessions/update-qr`, {
-          session_id: sessionId,
-          qr_code: qr,
-          status: "linking"
-        });
-      } catch (err) {
-        console.error(`[${sessionId}] QR Sync Error:`, err.message);
-      }
+      // Retry posting QR in case backend is still starting
+      postWithRetry(`${BACKEND_URL}/sessions/update-qr`, {
+        session_id: sessionId,
+        qr_code: qr,
+        status: "linking"
+      }).catch(err => console.error(`[${sessionId}] QR Sync failed after retries:`, err.message));
     }
 
     if (connection === "close") {
@@ -109,6 +106,20 @@ async function connectWhatsApp(sessionId, onMessage, onStatusChange) {
   });
 
   return sock;
+}
+
+// Retry helper: keeps trying until backend accepts the request
+async function postWithRetry(url, data, maxAttempts = 10, delayMs = 3000) {
+  for (let i = 1; i <= maxAttempts; i++) {
+    try {
+      await axios.post(url, data, { timeout: 5000 });
+      return; // success
+    } catch (err) {
+      if (i === maxAttempts) throw err;
+      console.log(`[Retry ${i}/${maxAttempts}] POST ${url} failed. Retrying in ${delayMs/1000}s...`);
+      await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
 }
 
 module.exports = connectWhatsApp;
