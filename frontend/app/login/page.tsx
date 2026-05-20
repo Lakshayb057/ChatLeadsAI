@@ -103,11 +103,7 @@ function LoginFormContent() {
             <Zap size={28} className="text-white fill-white relative z-10" />
           </div>
 
-          {source === 'console' ? (
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-3 bg-red-50 border border-red-200 text-red-600 animate-pulse">
-              <ShieldAlert size={12} /> Super Admin Terminal
-            </div>
-          ) : (
+          {source === 'console' ? null : (
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest mb-3"
               style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-bright)', color: 'var(--purple-mid)' }}>
               <ShieldCheck size={12} /> Enterprise Workspace
@@ -187,22 +183,26 @@ function LoginFormContent() {
             </button>
           </form>
 
-          {/* Guidelines */}
-          <div className="flex items-center gap-4 my-5">
-            <div className="flex-1 h-px bg-[var(--border-subtle)]" />
-            <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-ghost)' }}>credentials</p>
-            <div className="flex-1 h-px bg-[var(--border-subtle)]" />
-          </div>
+          {source !== 'console' && (
+            <>
+              {/* Guidelines */}
+              <div className="flex items-center gap-4 my-5">
+                <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+                <p className="text-[9px] font-black uppercase tracking-widest" style={{ color: 'var(--text-ghost)' }}>credentials</p>
+                <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+              </div>
 
-          <div className="p-4 rounded-2xl text-center"
-            style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-subtle)' }}>
-            <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>
-              {source === 'console' ? 'Admin Access Credentials' : 'Corporate Account'}
-            </p>
-            <p className="text-xs font-bold text-[var(--purple-mid)]">
-              {source === 'console' ? 'admin@chatleads.ai / Lakshay@123' : 'Use your assigned Company User details'}
-            </p>
-          </div>
+              <div className="p-4 rounded-2xl text-center"
+                style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-subtle)' }}>
+                <p className="text-[9px] font-black uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>
+                  Corporate Account
+                </p>
+                <p className="text-xs font-bold text-[var(--purple-mid)]">
+                  Use your assigned Company User details
+                </p>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Security badges */}
