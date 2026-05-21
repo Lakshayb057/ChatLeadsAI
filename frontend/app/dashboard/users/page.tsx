@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Briefcase, Plus, Trash2, Mail, Lock, ShieldAlert,
-  Loader2, CheckCircle2, AlertCircle, Smartphone, User, Globe
+  Loader2, CheckCircle2, AlertCircle, Smartphone, User, Globe, Edit2
 } from 'lucide-react';
 
 interface CompanyUser {
@@ -24,6 +24,7 @@ export default function CompaniesPage() {
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editingUser, setEditingUser] = useState<CompanyUser | null>(null);
 
   // Form Fields
   const [displayName, setDisplayName] = useState('');
@@ -63,36 +64,46 @@ export default function CompaniesPage() {
     fetchCompanies();
   }, []);
 
-  const handleCreateCompany = async (e: React.FormEvent) => {
+  const handleSaveCompany = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     setFormError('');
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`${API_URL}/users/create`, {
-        method: 'POST',
+      const isEditing = !!editingUser;
+      const url = isEditing ? `${API_URL}/users/${editingUser.id}` : `${API_URL}/users/create`;
+      const method = isEditing ? 'PUT' : 'POST';
+
+      const body: any = {
+        display_name: displayName.trim(),
+        email: email.trim(),
+        company_name: companyName.trim(),
+        max_sessions: Number(maxSessions),
+      };
+
+      if (!isEditing || password.trim()) {
+        body.password = password;
+      }
+
+      const response = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          display_name: displayName.trim(),
-          email: email.trim(),
-          password: password,
-          company_name: companyName.trim(),
-          max_sessions: Number(maxSessions),
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.detail || 'Could not register new client company.');
+        throw new Error(data.detail || `Could not ${isEditing ? 'update' : 'register'} client company.`);
       }
 
       // Success
       setModalOpen(false);
+      setEditingUser(null);
       // Reset form
       setDisplayName('');
       setEmail('');
@@ -103,10 +114,30 @@ export default function CompaniesPage() {
       // Refresh list
       fetchCompanies();
     } catch (err: any) {
-      setFormError(err.message || 'Fail-safe error creating company user.');
+      setFormError(err.message || 'Fail-safe error saving company user.');
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleEditClick = (user: CompanyUser) => {
+    setEditingUser(user);
+    setDisplayName(user.display_name);
+    setEmail(user.email);
+    setCompanyName(user.company_name);
+    setMaxSessions(user.max_sessions);
+    setPassword(''); // leave blank for no change
+    setModalOpen(true);
+  };
+
+  const handleAddClick = () => {
+    setEditingUser(null);
+    setDisplayName('');
+    setEmail('');
+    setCompanyName('');
+    setMaxSessions(3);
+    setPassword('');
+    setModalOpen(true);
   };
 
   const handleDeleteCompany = async (id: number) => {
@@ -155,7 +186,7 @@ export default function CompaniesPage() {
             Provision workspaces, configure API allocations, and manage active WhatsApp quotas.
           </p>
         </div>
-        <button onClick={() => setModalOpen(true)}
+        <button onClick={handleAddClick}
           className="btn-primary px-6 py-3.5 rounded-xl font-black text-sm flex items-center gap-2 group">
           <Plus size={16} className="group-hover:rotate-90 transition-transform duration-300" />
           Add Company Client
@@ -221,7 +252,7 @@ export default function CompaniesPage() {
               <p className="text-base font-black text-[var(--text-primary)]">No Companies Registered</p>
               <p className="text-xs font-medium text-[var(--text-secondary)] mt-1">Get started by provisioning your first corporate client account.</p>
             </div>
-            <button onClick={() => setModalOpen(true)}
+            <button onClick={handleAddClick}
               className="btn-primary px-6 py-3 rounded-xl font-black text-sm flex items-center gap-2 mt-2">
               <Plus size={16} /> Provision Client Account
             </button>
@@ -268,11 +299,18 @@ export default function CompaniesPage() {
                       </div>
                     </td>
                     <td className="py-6 px-8 text-right">
-                      <button onClick={() => handleDeleteCompany(user.id)}
-                        className="p-2.5 rounded-xl text-red-500 hover:bg-red-50 transition-colors"
-                        title="Delete Client Account">
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button onClick={() => handleEditClick(user)}
+                          className="p-2.5 rounded-xl text-blue-500 hover:bg-blue-50 transition-colors"
+                          title="Edit Client Account">
+                          <Edit2 size={16} />
+                        </button>
+                        <button onClick={() => handleDeleteCompany(user.id)}
+                          className="p-2.5 rounded-xl text-red-500 hover:bg-red-50 transition-colors"
+                          title="Delete Client Account">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -294,13 +332,13 @@ export default function CompaniesPage() {
             <div>
               <div className="flex items-center gap-2 mb-2 text-[var(--purple-mid)]">
                 <Briefcase size={20} />
-                <p className="text-[10px] font-black uppercase tracking-[0.2em]">Workspace Provisioner</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em]">{editingUser ? 'Workspace Editor' : 'Workspace Provisioner'}</p>
               </div>
-              <h3 className="text-2xl font-black text-[var(--text-primary)]">Add Corporate Client</h3>
-              <p className="text-xs font-medium text-[var(--text-secondary)] mt-0.5">Seed database configurations and assign allowed WhatsApp device seats.</p>
+              <h3 className="text-2xl font-black text-[var(--text-primary)]">{editingUser ? 'Edit Corporate Client' : 'Add Corporate Client'}</h3>
+              <p className="text-xs font-medium text-[var(--text-secondary)] mt-0.5">{editingUser ? 'Update database configurations and allowed WhatsApp device seats.' : 'Seed database configurations and assign allowed WhatsApp device seats.'}</p>
             </div>
 
-            <form onSubmit={handleCreateCompany} className="space-y-4">
+            <form onSubmit={handleSaveCompany} className="space-y-4">
               
               <div className="grid grid-cols-2 gap-4">
                 {/* Company Name */}
@@ -338,7 +376,7 @@ export default function CompaniesPage() {
                 <label className="block text-[10px] font-black uppercase tracking-[0.15em] text-[var(--text-secondary)]">Corporate Password</label>
                 <div className="relative group">
                   <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-ghost)]" size={14} />
-                  <input type="password" required placeholder="Assign robust login key"
+                  <input type="password" required={!editingUser} placeholder={editingUser ? "Leave blank to keep unchanged" : "Assign robust login key"}
                     className="input-dark w-full pl-9 pr-4 py-3 rounded-xl text-sm font-bold text-[var(--text-primary)]"
                     value={password} onChange={e => setPassword(e.target.value)} />
                 </div>
@@ -376,10 +414,10 @@ export default function CompaniesPage() {
                   {saving ? (
                     <>
                       <Loader2 className="animate-spin" size={14} />
-                      Provisioning...
+                      Saving...
                     </>
                   ) : (
-                    'Provision Account'
+                    editingUser ? 'Save Changes' : 'Provision Account'
                   )}
                 </button>
               </div>

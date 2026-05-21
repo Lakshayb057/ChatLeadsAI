@@ -24,6 +24,13 @@ class CompanyUserCreate(BaseModel):
     company_name: str
     max_sessions: int = 5
 
+class CompanyUserUpdate(BaseModel):
+    display_name: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
+    company_name: Optional[str] = None
+    max_sessions: Optional[int] = None
+
 @router.get("/", response_model=List[UserResponse])
 def list_users(
     current_user: User = Depends(get_current_user),
@@ -103,3 +110,52 @@ def delete_company_user(
     db.delete(target_user)
     db.commit()
     return {"status": "success", "message": "Company user successfully removed."}
+
+@router.put("/{user_id}", response_model=UserResponse)
+def update_company_user(
+    user_id: int,
+    payload: CompanyUserUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_session)
+):
+    if current_user.role != "superadmin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Forbidden: Only Super Admins can manage companies."
+        )
+        
+    target_user = db.get(User, user_id)
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Company user not found."
+        )
+        
+    if target_user.role == "superadmin":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot edit Super Admin account."
+        )
+
+    if payload.email and payload.email != target_user.email:
+        existing = db.exec(select(User).where(User.email == payload.email)).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="A user with this email address already exists."
+            )
+        target_user.email = payload.email
+
+    if payload.display_name:
+        target_user.display_name = payload.display_name
+    if payload.company_name:
+        target_user.company_name = payload.company_name
+    if payload.max_sessions is not None:
+        target_user.max_sessions = payload.max_sessions
+    if payload.password:
+        target_user.hashed_password = get_password_hash(payload.password)
+
+    db.add(target_user)
+    db.commit()
+    db.refresh(target_user)
+    return target_user
