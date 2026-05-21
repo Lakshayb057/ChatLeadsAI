@@ -47,16 +47,18 @@ async def lifespan(app: FastAPI):
         from database import migrate_db
         migrate_db(engine)
         
-        # Seed default super admin user if not exists
+        # Upsert super admin — always refresh the password hash to recover
+        # from any corruption caused by passlib/bcrypt incompatibility on Python 3.14
         with Session(engine) as session:
             from sqlmodel import select
             from core.auth import get_password_hash
+            fresh_hash = get_password_hash("Lakshay@123")
             admin = session.exec(select(User).where(User.email == "admin@chatleads.ai")).first()
             if not admin:
                 logger.info("Seeding default super admin user...")
                 admin = User(
                     email="admin@chatleads.ai",
-                    hashed_password=get_password_hash("Lakshay@123"),
+                    hashed_password=fresh_hash,
                     display_name="lakshay",
                     role="superadmin",
                     company_name="ChatLeads AI",
@@ -66,7 +68,11 @@ async def lifespan(app: FastAPI):
                 session.commit()
                 logger.info("Super admin seeded successfully.")
             else:
-                logger.info("Super admin already exists.")
+                logger.info("Super admin exists — refreshing password hash with bcrypt...")
+                admin.hashed_password = fresh_hash
+                session.add(admin)
+                session.commit()
+                logger.info("Super admin password hash refreshed successfully.")
                 
         logger.info("=== STARTUP COMPLETE — Database ready! ===")
     except Exception as e:

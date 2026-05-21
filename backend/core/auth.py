@@ -1,23 +1,9 @@
 import os
+import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional
 
-# Monkeypatch bcrypt to fix passlib incompatibility with modern bcrypt (>4.0.0) on Python 3.12+
-try:
-    import bcrypt
-    original_hashpw = bcrypt.hashpw
-    def patched_hashpw(password, salt):
-        if isinstance(password, bytes) and len(password) > 72:
-            password = password[:72]
-        elif isinstance(password, str) and len(password.encode('utf-8')) > 72:
-            password = password.encode('utf-8')[:72].decode('utf-8', errors='ignore')
-        return original_hashpw(password, salt)
-    bcrypt.hashpw = patched_hashpw
-except ImportError:
-    pass
-
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from dotenv import load_dotenv
 from sqlmodel import Session
 from models import User
@@ -31,14 +17,24 @@ SECRET_KEY = os.getenv("SECRET_KEY", "your-super-secret-key")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 1 week
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify password using direct bcrypt (works on Python 3.14+)."""
+    try:
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"),
+            hashed_password.encode("utf-8")
+        )
+    except Exception:
+        return False
 
-def get_password_hash(password):
-    return pwd_context.hash(password)
+def get_password_hash(password: str) -> str:
+    """Hash password using direct bcrypt (works on Python 3.14+)."""
+    return bcrypt.hashpw(
+        password.encode("utf-8"),
+        bcrypt.gensalt()
+    ).decode("utf-8")
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
