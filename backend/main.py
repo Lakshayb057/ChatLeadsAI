@@ -27,36 +27,53 @@ from core.ws import manager
 from models import User
 from database import get_session
 import os
+import traceback
+
+# Captured startup error (if any) — exposed via /debug
+_startup_error: str = ""
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup
-    logger.info("Creating database tables...")
-    SQLModel.metadata.create_all(engine)
-    from database import migrate_db
-    migrate_db(engine)
-    
-    # Seed default super admin user if not exists
-    with Session(engine) as session:
-        from sqlmodel import select
-        from core.auth import get_password_hash
-        admin = session.exec(select(User).where(User.email == "admin@chatleads.ai")).first()
-        if not admin:
-            logger.info("Seeding default super admin user...")
-            admin = User(
-                email="admin@chatleads.ai",
-                hashed_password=get_password_hash("Lakshay@123"),
-                display_name="lakshay",
-                role="superadmin",
-                company_name="ChatLeads AI",
-                max_sessions=9999
-            )
-            session.add(admin)
-            session.commit()
-            
-    logger.info("Database ready!")
+    global _startup_error
+    try:
+        logger.info("=== STARTUP BEGIN ===")
+        logger.info(f"DATABASE_URL set: {bool(os.getenv('DATABASE_URL'))}")
+        logger.info(f"SECRET_KEY set: {bool(os.getenv('SECRET_KEY'))}")
+        logger.info(f"GEMINI_API_KEY set: {bool(os.getenv('GEMINI_API_KEY'))}")
+
+        # Create tables
+        logger.info("Creating database tables...")
+        SQLModel.metadata.create_all(engine)
+        from database import migrate_db
+        migrate_db(engine)
+        
+        # Seed default super admin user if not exists
+        with Session(engine) as session:
+            from sqlmodel import select
+            from core.auth import get_password_hash
+            admin = session.exec(select(User).where(User.email == "admin@chatleads.ai")).first()
+            if not admin:
+                logger.info("Seeding default super admin user...")
+                admin = User(
+                    email="admin@chatleads.ai",
+                    hashed_password=get_password_hash("Lakshay@123"),
+                    display_name="lakshay",
+                    role="superadmin",
+                    company_name="ChatLeads AI",
+                    max_sessions=9999
+                )
+                session.add(admin)
+                session.commit()
+                logger.info("Super admin seeded successfully.")
+            else:
+                logger.info("Super admin already exists.")
+                
+        logger.info("=== STARTUP COMPLETE — Database ready! ===")
+    except Exception as e:
+        _startup_error = traceback.format_exc()
+        logger.error(f"=== STARTUP FAILED ===\n{_startup_error}")
+        # Don't re-raise — let the app start so /debug is reachable
     yield
-    # Shutdown
     logger.info("Shutting down...")
 
 app = FastAPI(title="ChalLeads AI", lifespan=lifespan)
@@ -124,12 +141,50 @@ async def health_check(response: Response):
             session.exec(text("SELECT 1"))
     except Exception as e:
         logger.error(f"Database health check failed: {e}")
-        db_status = "unhealthy"
+        db_status = f"unhealthy: {str(e)}"
         response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     
     return {
-        "status": "healthy" if db_status == "healthy" else "unhealthy",
-        "database": db_status
+        "status": "healthy" if "unhealthy" not in db_status else "unhealthy",
+        "database": db_status,
+        "startup_error": _startup_error or None,
+    }
+
+@app.get("/debug")
+async def debug_info():
+    """Diagnostic endpoint — shows env var presence, DB status, and startup errors."""
+    db_ok = False
+    db_error = None
+    try:
+        from sqlmodel import text
+        with Session(engine) as session:
+            session.exec(text("SELECT 1"))
+        db_ok = True
+    except Exception as e:
+        db_error = str(e)
+    
+    # Check which tables exist
+    tables = []
+    try:
+        from sqlalchemy import inspect as sa_inspect
+        insp = sa_inspect(engine)
+        tables = insp.get_table_names()
+    except Exception:
+        pass
+
+    return {
+        "env": {
+            "DATABASE_URL_set": bool(os.getenv("DATABASE_URL")),
+            "SECRET_KEY_set": bool(os.getenv("SECRET_KEY")),
+            "GEMINI_API_KEY_set": bool(os.getenv("GEMINI_API_KEY")),
+            "CORS_ORIGINS": os.getenv("CORS_ORIGINS", "(not set)"),
+        },
+        "database": {
+            "connected": db_ok,
+            "error": db_error,
+            "tables": tables,
+        },
+        "startup_error": _startup_error or None,
     }
 
 @app.api_route("/", methods=["GET", "HEAD"])
