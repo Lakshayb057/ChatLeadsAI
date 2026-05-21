@@ -307,7 +307,7 @@ export default function LeadsPage() {
           {[
             { label: 'Total Leads', value: leads.length, color: 'var(--purple-mid)', bg: 'var(--bg-hover)' },
             { label: 'Hot Leads', value: hotCount, color: '#f59e0b', bg: 'rgba(245,158,11,0.06)' },
-            { label: 'Warm Leads', value: warmCount, color: '#7c3aed', bg: 'rgba(124,58,237,0.06)' },
+            { label: 'Warm Leads', value: warmCount, color: '#2563eb', bg: 'rgba(37,99,235,0.06)' },
             { label: 'Companies', value: companyCount, color: '#10b981', bg: 'rgba(16,185,129,0.06)' },
           ].map(stat => (
             <div key={stat.label} className="glass-card rounded-2xl p-5 flex items-center justify-between"
@@ -426,11 +426,11 @@ function LeadCard({ lead, index, isSuperAdmin, onDelete }: {
   const isHot = lead.lead_score === 'Hot';
   const isWarm = lead.lead_score === 'Warm';
 
-  const accentColor = isHot ? '#f59e0b' : isWarm ? '#7c3aed' : '#6b7280';
+  const accentColor = isHot ? '#f59e0b' : isWarm ? '#2563eb' : '#6b7280';
   const accentBg = isHot
     ? 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(239,68,68,0.08))'
     : isWarm
-    ? 'linear-gradient(135deg, rgba(124,58,237,0.1), rgba(124,58,237,0.05))'
+    ? 'linear-gradient(135deg, rgba(37,99,235,0.1), rgba(37,99,235,0.05))'
     : 'var(--bg-hover)';
 
   return (
@@ -573,3 +573,4 @@ function LeadCard({ lead, index, isSuperAdmin, onDelete }: {
     </div>
   );
 }
+

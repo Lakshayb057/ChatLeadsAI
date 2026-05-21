@@ -25,7 +25,7 @@ function ProviderCard({ name, selected, desc, onClick }: { name: string; selecte
     <div onClick={onClick}
       className="p-5 rounded-2xl cursor-pointer transition-all duration-300"
       style={{
-        background: selected ? 'rgba(124,58,237,0.06)' : 'var(--bg-deep)',
+        background: selected ? 'rgba(37,99,235,0.06)' : 'var(--bg-deep)',
         border: `2px solid ${selected ? 'var(--border-bright)' : 'var(--border-subtle)'}`,
         boxShadow: selected ? 'var(--glow-purple)' : 'none',
       }}
@@ -196,7 +196,7 @@ export default function SettingsPage() {
                     <p className="text-[10px] font-bold mt-0.5" style={{ color: 'var(--text-secondary)' }}>{String(desc)}</p>
                   </div>
                   <div className={`w-12 h-6 rounded-full relative cursor-pointer transition-all duration-300`}
-                    style={{ background: enabled ? 'linear-gradient(135deg, #7c3aed, #5b21b6)' : 'var(--border-subtle)', border: `1px solid ${enabled ? 'rgba(124,58,237,0.3)' : 'var(--border-subtle)'}`, boxShadow: enabled ? 'var(--glow-purple)' : 'none' }}>
+                    style={{ background: enabled ? 'linear-gradient(135deg, #2563eb, #1e3a8a)' : 'var(--border-subtle)', border: `1px solid ${enabled ? 'rgba(37,99,235,0.3)' : 'var(--border-subtle)'}`, boxShadow: enabled ? 'var(--glow-purple)' : 'none' }}>
                     <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all duration-300`}
                       style={{ left: enabled ? '24px' : '2px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
                   </div>
@@ -227,7 +227,7 @@ export default function SettingsPage() {
               <div className="flex items-center gap-5 p-5 rounded-2xl"
                 style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-subtle)' }}>
                 <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-white text-xl font-black"
-                  style={{ background: 'linear-gradient(135deg, #7c3aed, #ec4899)', boxShadow: 'var(--glow-purple)' }}>
+                  style={{ background: 'linear-gradient(135deg, #2563eb, #ec4899)', boxShadow: 'var(--glow-purple)' }}>
                   L
                 </div>
                 <div>
@@ -269,3 +269,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+

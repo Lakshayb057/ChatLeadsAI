@@ -191,7 +191,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }}>
         {/* Sidebar glow */}
         <div className="absolute top-0 right-0 w-px h-full pointer-events-none"
-          style={{ background: 'linear-gradient(180deg, transparent, rgba(124,58,237,0.1) 30%, rgba(124,58,237,0.05) 70%, transparent)' }} />
+          style={{ background: 'linear-gradient(180deg, transparent, rgba(37,99,235,0.1) 30%, rgba(37,99,235,0.05) 70%, transparent)' }} />
         <SidebarContent />
       </aside>
 
@@ -234,7 +234,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="flex items-center gap-2">
               <div className="px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider"
                 style={{
-                  background: 'linear-gradient(135deg, rgba(124,58,237,0.08), rgba(124,58,237,0.03))',
+                  background: 'linear-gradient(135deg, rgba(37,99,235,0.08), rgba(37,99,235,0.03))',
                   border: '1px solid var(--border-glow)',
                   color: 'var(--purple-mid)',
                 }}>
@@ -272,9 +272,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               </div>
               <div className="w-11 h-11 rounded-2xl relative overflow-hidden"
                 style={{
-                  background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                  background: 'linear-gradient(135deg, #0ea5e9, #2563eb)',
                   border: '2px solid var(--border-glow)',
-                  boxShadow: '0 4px 10px rgba(124,58,237,0.15)',
+                  boxShadow: '0 4px 10px rgba(37,99,235,0.15)',
                 }}>
                 <div className="absolute inset-0 flex items-center justify-center text-white font-black text-sm uppercase">
                   {displayName.charAt(0)}
@@ -289,7 +289,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           style={{ background: 'var(--bg-void)' }}>
           {/* Content glow */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-64 pointer-events-none"
-            style={{ background: 'radial-gradient(ellipse 60% 100% at 50% 0%, rgba(124,58,237,0.02) 0%, transparent 100%)' }} />
+            style={{ background: 'radial-gradient(ellipse 60% 100% at 50% 0%, rgba(37,99,235,0.02) 0%, transparent 100%)' }} />
           <div className="relative z-10">
             {children}
           </div>
@@ -298,3 +298,4 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     </div>
   );
 }
+

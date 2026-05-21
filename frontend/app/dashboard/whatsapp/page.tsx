@@ -118,8 +118,8 @@ function SessionCard({ session, onDelete, isDeleting }: {
         ) : hasQR ? (
           <div className="text-center space-y-5">
             <div className="p-5 rounded-2xl inline-block relative"
-              style={{ background: 'white', boxShadow: '0 10px 35px rgba(124,58,237,0.08)', border: '3px solid var(--border-glow)' }}>
-              <QRCodeSVG value={session.qr_code!} size={170} level="H" fgColor="#110b29" />
+              style={{ background: 'white', boxShadow: '0 10px 35px rgba(37,99,235,0.08)', border: '3px solid var(--border-glow)' }}>
+              <QRCodeSVG value={session.qr_code!} size={170} level="H" fgColor="#020617" />
             </div>
             <div>
               <p className="text-base font-black text-[var(--text-primary)]">Scan to Connect</p>
@@ -182,7 +182,7 @@ function CompanyGroupBlock({ group, deletingSessionId, onDelete }: {
         <div className="flex items-center gap-4">
           {/* Company Avatar */}
           <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg text-white shrink-0"
-            style={{ background: 'linear-gradient(135deg, #7c3aed, #5b21b6)', boxShadow: 'var(--glow-purple)' }}>
+            style={{ background: 'linear-gradient(135deg, #2563eb, #1e3a8a)', boxShadow: 'var(--glow-purple)' }}>
             {(group.company || '?').charAt(0).toUpperCase()}
           </div>
           <div>
@@ -417,7 +417,7 @@ export default function WhatsAppPage() {
                     width: `${Math.min(100, (sessions.length / maxSessions) * 100)}%`,
                     background: sessions.length >= maxSessions
                       ? 'linear-gradient(90deg, #ec4899, #ef4444)'
-                      : 'linear-gradient(90deg, #8b5cf6, #7c3aed)'
+                      : 'linear-gradient(90deg, #0ea5e9, #2563eb)'
                   }} />
               </div>
             </div>
@@ -519,3 +519,4 @@ export default function WhatsAppPage() {
     </div>
   );
 }
+

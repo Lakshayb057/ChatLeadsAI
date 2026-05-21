@@ -9,7 +9,7 @@ function FloatingOrb({ x, y, size, delay }: { x: string; y: string; size: number
     <div className="absolute rounded-full pointer-events-none opacity-0 animate-fade-in"
       style={{
         left: x, top: y, width: size, height: size, animationDelay: `${delay}s`,
-        background: 'radial-gradient(circle, rgba(124,58,237,0.08), transparent)',
+        background: 'radial-gradient(circle, rgba(37,99,235,0.08), transparent)',
         filter: 'blur(40px)',
         animation: `float-slow ${8 + delay}s ease-in-out ${delay}s infinite, fadeIn 1.2s ease ${delay}s forwards`,
       }} />
@@ -81,12 +81,12 @@ function LoginFormContent() {
       {/* Background Graphic Rings & Orbs */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] opacity-25"
-          style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%)', filter: 'blur(80px)' }} />
+          style={{ background: 'radial-gradient(circle, rgba(37,99,235,0.15) 0%, transparent 70%)', filter: 'blur(80px)' }} />
         <div className="absolute top-0 right-0 w-[400px] h-[400px] opacity-15"
           style={{ background: 'radial-gradient(circle, rgba(236,72,153,0.15) 0%, transparent 70%)', filter: 'blur(80px)' }} />
         {/* Grid pattern */}
         <div className="absolute inset-0 opacity-[0.015]"
-          style={{ backgroundImage: 'linear-gradient(rgba(124,58,237,1) 1px, transparent 1px), linear-gradient(90deg, rgba(124,58,237,1) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
+          style={{ backgroundImage: 'linear-gradient(rgba(37,99,235,1) 1px, transparent 1px), linear-gradient(90deg, rgba(37,99,235,1) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
         
         <FloatingOrb x="5%" y="15%" size={250} delay={0} />
         <FloatingOrb x="75%" y="55%" size={180} delay={1.5} />
@@ -225,3 +225,4 @@ export default function LoginPage() {
     </Suspense>
   );
 }
+

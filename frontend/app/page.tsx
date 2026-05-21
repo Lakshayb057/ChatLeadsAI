@@ -107,14 +107,14 @@ export default function LandingPage() {
       {/* ── Ambient Background Effects ── */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[600px] opacity-15"
-          style={{ background: 'radial-gradient(ellipse, rgba(124,58,237,0.3) 0%, transparent 70%)', filter: 'blur(80px)' }} />
+          style={{ background: 'radial-gradient(ellipse, rgba(37,99,235,0.3) 0%, transparent 70%)', filter: 'blur(80px)' }} />
         <div className="absolute bottom-0 right-0 w-[500px] h-[500px] opacity-10"
           style={{ background: 'radial-gradient(ellipse, rgba(236,72,153,0.3) 0%, transparent 70%)', filter: 'blur(100px)' }} />
         <div className="absolute top-1/2 left-0 w-[400px] h-[400px] opacity-5"
           style={{ background: 'radial-gradient(ellipse, rgba(6,182,212,0.3) 0%, transparent 70%)', filter: 'blur(80px)' }} />
         {/* Grid pattern */}
         <div className="absolute inset-0 opacity-[0.04]"
-          style={{ backgroundImage: 'linear-gradient(rgba(139,92,246,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(139,92,246,0.15) 1px, transparent 1px)', backgroundSize: '80px 80px' }} />
+          style={{ backgroundImage: 'linear-gradient(rgba(14,165,233,0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(14,165,233,0.15) 1px, transparent 1px)', backgroundSize: '80px 80px' }} />
       </div>
 
       {/* ── Navbar ── */}
@@ -140,7 +140,7 @@ export default function LandingPage() {
                 style={{ color: 'var(--text-secondary)' }}>
                 {item}
                 <span className="absolute -bottom-1 left-0 w-0 h-0.5 group-hover:w-full transition-all duration-300"
-                  style={{ background: 'linear-gradient(90deg, #7c3aed, #a78bfa)' }} />
+                  style={{ background: 'linear-gradient(90deg, #2563eb, #a78bfa)' }} />
               </a>
             ))}
           </div>
@@ -244,14 +244,14 @@ export default function LandingPage() {
               <div className="p-8 grid grid-cols-3 gap-6" style={{ minHeight: '340px' }}>
                 {/* Stat cards mock */}
                 {[
-                  { label: 'Total Leads', val: '2,847', color: '#8b5cf6' },
+                  { label: 'Total Leads', val: '2,847', color: '#0ea5e9' },
                   { label: 'Active Fleet', val: '12', color: '#10b981' },
                   { label: 'Hot Ratio', val: '68%', color: '#f59e0b' },
                 ].map((s, i) => (
                   <div key={i} className="rounded-2xl p-6 animate-fade-in"
                     style={{ background: 'var(--bg-hover)', border: `1px solid var(--border-glow)`, animationDelay: `${i * 0.15}s` }}>
                     <div className="w-10 h-10 rounded-xl mb-4 flex items-center justify-center"
-                      style={{ background: `rgba(${s.color === '#8b5cf6' ? '139,92,246' : s.color === '#10b981' ? '16,185,129' : '245,158,11'},0.08)` }}>
+                      style={{ background: `rgba(${s.color === '#0ea5e9' ? '14,165,233' : s.color === '#10b981' ? '16,185,129' : '245,158,11'},0.08)` }}>
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: s.color, boxShadow: `0 0 10px ${s.color}` }} />
                     </div>
                     <p className="text-2xl font-black text-[var(--text-primary)] mb-1">{s.val}</p>
@@ -266,7 +266,7 @@ export default function LandingPage() {
                       <div key={i} className="flex-1 rounded-t-lg transition-all duration-1000 animate-fade-in"
                         style={{
                           height: `${h}%`,
-                          background: `linear-gradient(180deg, rgba(124,58,237,${0.25 + h / 400}) 0%, rgba(124,58,237,0.12) 100%)`,
+                          background: `linear-gradient(180deg, rgba(37,99,235,${0.25 + h / 400}) 0%, rgba(37,99,235,0.12) 100%)`,
                           border: '1px solid var(--border-glow)',
                           animationDelay: `${i * 0.05}s`
                         }} />
@@ -277,7 +277,7 @@ export default function LandingPage() {
 
               {/* Glow overlay */}
               <div className="absolute inset-0 pointer-events-none rounded-3xl"
-                style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.02) 0%, transparent 60%)' }} />
+                style={{ background: 'linear-gradient(135deg, rgba(14,165,233,0.02) 0%, transparent 60%)' }} />
             </div>
           </div>
         </div>
@@ -346,10 +346,10 @@ export default function LandingPage() {
             style={{ border: '1px solid var(--border-bright)', boxShadow: 'var(--glow-purple)' }}>
             {/* Background glow */}
             <div className="absolute inset-0 pointer-events-none"
-              style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(124,58,237,0.06) 0%, transparent 70%)' }} />
+              style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 50%, rgba(37,99,235,0.06) 0%, transparent 70%)' }} />
             {/* Orbit ring */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full opacity-5 pointer-events-none animate-spin-slow"
-              style={{ border: '2px dashed #8b5cf6' }} />
+              style={{ border: '2px dashed #0ea5e9' }} />
 
             <div className="relative z-10">
               <div className="w-20 h-20 flex items-center justify-center mx-auto mb-8 animate-float">
@@ -388,3 +388,4 @@ export default function LandingPage() {
     </div>
   );
 }
+

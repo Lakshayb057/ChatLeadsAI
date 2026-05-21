@@ -95,7 +95,7 @@ function DistributionRow({ label, count, total, gradient, glowColor }: any) {
       <span className="text-xs font-black uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>{label}</span>
       <span className="text-sm font-black text-[var(--text-primary)]">{count}</span>
     </div>
-    <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(124,58,237,0.06)' }}>
+    <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(37,99,235,0.06)' }}>
       <div
         className="h-full rounded-full transition-all duration-1000 ease-out"
         style={{ width: `${width}%`, background: gradient, boxShadow: `0 0 8px ${glowColor}60` }}
@@ -124,7 +124,7 @@ function FleetBar({ session, maxLeads, index }: { session: { name: string; leads
         <div className="relative w-full max-w-[48px]">
           {/* Tooltip */}
           <div className="absolute -top-10 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-lg text-[10px] font-black text-white opacity-0 group-hover/bar:opacity-100 transition-all duration-300 whitespace-nowrap pointer-events-none z-10"
-            style={{ background: 'rgba(124,58,237,0.9)', border: '1px solid rgba(139,92,246,0.4)', boxShadow: '0 4px 16px rgba(124,58,237,0.4)' }}>
+            style={{ background: 'rgba(37,99,235,0.9)', border: '1px solid rgba(14,165,233,0.4)', boxShadow: '0 4px 16px rgba(37,99,235,0.4)' }}>
             {session.leads} leads
           </div>
           {/* Bar */}
@@ -134,9 +134,9 @@ function FleetBar({ session, maxLeads, index }: { session: { name: string; leads
               height: `${height}%`,
               minHeight: session.leads > 0 ? '8px' : '0',
               maxHeight: '180px',
-              background: 'linear-gradient(180deg, rgba(139,92,246,0.9) 0%, rgba(109,40,217,0.6) 100%)',
-              border: '1px solid rgba(139,92,246,0.3)',
-              boxShadow: '0 0 20px rgba(139,92,246,0.3)',
+              background: 'linear-gradient(180deg, rgba(14,165,233,0.9) 0%, rgba(109,40,217,0.6) 100%)',
+              border: '1px solid rgba(14,165,233,0.3)',
+              boxShadow: '0 0 20px rgba(14,165,233,0.3)',
             }}>
             <div className="absolute inset-x-0 top-0 h-8 opacity-30"
               style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.3), transparent)' }} />
@@ -180,7 +180,7 @@ function FeedItem({ item, index }: { item: any; index: number }) {
         background: isHot
           ? 'linear-gradient(135deg, rgba(245,158,11,0.2), rgba(239,68,68,0.15))'
           : isWarm
-          ? 'linear-gradient(135deg, rgba(124,58,237,0.15), rgba(124,58,237,0.08))'
+          ? 'linear-gradient(135deg, rgba(37,99,235,0.15), rgba(37,99,235,0.08))'
           : 'var(--bg-hover)',
         border: isHot ? '1px solid rgba(245,158,11,0.3)' : isWarm ? '1px solid var(--border-bright)' : '1px solid var(--border-glow)',
       }}>
@@ -274,9 +274,9 @@ export default function DashboardOverview() {
         {/* Spinner */}
         <div className="relative w-20 h-20">
           <div className="absolute inset-0 rounded-full animate-spin"
-            style={{ border: '3px solid rgba(139,92,246,0.1)', borderTopColor: '#8b5cf6' }} />
+            style={{ border: '3px solid rgba(14,165,233,0.1)', borderTopColor: '#0ea5e9' }} />
           <div className="absolute inset-3 rounded-full animate-spin"
-            style={{ border: '2px solid rgba(139,92,246,0.05)', borderBottomColor: '#a78bfa', animationDirection: 'reverse', animationDuration: '0.7s' }} />
+            style={{ border: '2px solid rgba(14,165,233,0.05)', borderBottomColor: '#a78bfa', animationDirection: 'reverse', animationDuration: '0.7s' }} />
           <div className="absolute inset-0 flex items-center justify-center">
             <Zap size={18} className="text-purple-500" />
           </div>
@@ -338,8 +338,8 @@ export default function DashboardOverview() {
           value={stats.summary.total_leads}
           label="Leads Captured"
           icon={<Users size={24} />}
-          gradient="linear-gradient(135deg, #7c3aed, #5b21b6)"
-          glowColor="#8b5cf6"
+          gradient="linear-gradient(135deg, #2563eb, #1e3a8a)"
+          glowColor="#0ea5e9"
           trend="+12% today"
         />
         <StatCard
@@ -416,15 +416,15 @@ export default function DashboardOverview() {
               label="⚡ Warm Leads"
               count={stats.scoring.warm}
               total={stats.summary.total_leads}
-              gradient="linear-gradient(90deg, #8b5cf6, #6d28d9)"
-              glowColor="#8b5cf6"
+              gradient="linear-gradient(90deg, #0ea5e9, #312e81)"
+              glowColor="#0ea5e9"
             />
             <DistributionRow
               label="❄️ Cold Leads"
               count={stats.scoring.cold}
               total={stats.summary.total_leads}
               gradient="linear-gradient(90deg, #b3acd8, #5c538a)"
-              glowColor="#7c3aed"
+              glowColor="#2563eb"
             />
           </div>
 
@@ -433,7 +433,7 @@ export default function DashboardOverview() {
              style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-glow)' }}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-                 style={{ background: 'rgba(124,58,237,0.1)' }}>
+                 style={{ background: 'rgba(37,99,235,0.1)' }}>
                 <TrendingUp size={18} className="text-[var(--purple-mid)]" />
               </div>
               <div>
@@ -487,3 +487,4 @@ export default function DashboardOverview() {
     </div>
   );
 }
+
