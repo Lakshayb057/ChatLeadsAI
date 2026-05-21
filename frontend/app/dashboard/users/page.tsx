@@ -16,6 +16,8 @@ interface CompanyUser {
   is_active: boolean;
 }
 
+const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+
 export default function CompaniesPage() {
   const [users, setUsers] = useState<CompanyUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +39,7 @@ export default function CompaniesPage() {
     setError('');
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/users/', {
+      const response = await fetch(`${API_URL}/users/`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -68,7 +70,7 @@ export default function CompaniesPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:8000/users/create', {
+      const response = await fetch(`${API_URL}/users/create`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -114,7 +116,7 @@ export default function CompaniesPage() {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8000/users/${id}`, {
+      const response = await fetch(`${API_URL}/users/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
