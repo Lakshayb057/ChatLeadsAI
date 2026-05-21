@@ -11,6 +11,7 @@ if sys.platform.startswith('win'):
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Response, status
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 from sqlmodel import SQLModel, Session
 from database import engine
@@ -60,15 +61,38 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="ChalLeads AI", lifespan=lifespan)
 
-# CORS
+# CORS — build the allowed origins list from env + known production URLs
+_raw_origins = os.getenv("CORS_ORIGINS", "")
+_extra = [o.strip() for o in _raw_origins.split(",") if o.strip()]
+ALLOWED_ORIGINS = list(set([
+    "https://chat-leads-ai.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:3001",
+] + _extra))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, you can replace with specific Vercel URL
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["*"]
 )
+
+# Global exception handler — ensures CORS headers are always present even on 500s
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    origin = request.headers.get("origin", "")
+    allow_origin = origin if origin in ALLOWED_ORIGINS else ALLOWED_ORIGINS[0]
+    logger.error(f"Unhandled exception: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+        headers={
+            "Access-Control-Allow-Origin": allow_origin,
+            "Access-Control-Allow-Credentials": "true",
+        },
+    )
 
 # WebSocket endpoint
 @app.websocket("/ws")
