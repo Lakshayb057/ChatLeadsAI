@@ -192,25 +192,6 @@ export default function LeadsPage() {
   // Derive unique companies for the company filter dropdown
   const uniqueCompanies = Array.from(new Set(leads.map(l => l.owner_company).filter(Boolean))) as string[];
 
-  const Modal = ({ children }: { children: React.ReactNode }) => (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 overflow-y-auto"
-      style={{ background: 'rgba(17,11,41,0.6)', backdropFilter: 'blur(16px)' }}>
-      <motion.div 
-        initial={{ y: "100%", scale: 0.9 }}
-        animate={{ y: 0, scale: 1 }}
-        exit={{ y: "100%", opacity: 0 }}
-        transition={{ type: "spring", damping: 25, stiffness: 200 }}
-        className="w-full md:max-w-md rounded-t-[2.5rem] md:rounded-[2.5rem] p-8 md:p-10 space-y-6 max-h-[85vh] md:max-h-[calc(100vh-3rem)] overflow-y-auto custom-scrollbar shadow-2xl"
-        style={{ background: 'var(--bg-deep)', border: '1px solid var(--border-bright)', boxShadow: '0 0 40px rgba(109, 40, 217, 0.15)' }}>
-        {children}
-      </motion.div>
-    </motion.div>
-  );
-
   const selectStyle = {
     background: 'var(--bg-deep)', border: '1px solid var(--border-glow)',
     color: 'var(--text-secondary)', borderRadius: '1rem', padding: '0.75rem 1.25rem',
@@ -656,6 +637,25 @@ export default function LeadsPage() {
     </motion.div>
   );
 }
+
+const Modal = ({ children }: { children: React.ReactNode }) => (
+  <motion.div 
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    className="fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-6 overflow-y-auto"
+    style={{ background: 'rgba(17,11,41,0.6)', backdropFilter: 'blur(16px)' }}>
+    <motion.div 
+      initial={{ y: "100%", scale: 0.9 }}
+      animate={{ y: 0, scale: 1 }}
+      exit={{ y: "100%", opacity: 0 }}
+      transition={{ type: "spring", damping: 25, stiffness: 200 }}
+      className="w-full md:max-w-md rounded-t-[2.5rem] md:rounded-[2.5rem] p-8 md:p-10 space-y-6 max-h-[85vh] md:max-h-[calc(100vh-3rem)] overflow-y-auto custom-scrollbar shadow-2xl"
+      style={{ background: 'var(--bg-deep)', border: '1px solid var(--border-bright)', boxShadow: '0 0 40px rgba(109, 40, 217, 0.15)' }}>
+      {children}
+    </motion.div>
+  </motion.div>
+);
 
 function LeadCard({ lead, index, isSuperAdmin, onDelete, onEdit }: {
   lead: Lead; index: number; isSuperAdmin: boolean; onDelete: () => void; onEdit: () => void;
