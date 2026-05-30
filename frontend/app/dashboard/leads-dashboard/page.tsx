@@ -327,17 +327,21 @@ export default function LeadsDashboard() {
     .map(([name, value]) => ({ name, value }));
 
   // 6. Mapped Agents Summary (Split Dropoffs panel)
-  const agentGroups = filteredLeads.reduce((acc: {[key: string]: number}, l) => {
-    if (l.executive_name) {
-      const key = `${l.executive_name} (${l.executive_code || 'N/A'})`;
-      acc[key] = (acc[key] || 0) + 1;
+  const agentGroups = filteredLeads.reduce((acc: {[key: string]: {name: string, code: string, count: number}}, l) => {
+    const name = l.executive_name;
+    const code = l.executive_code;
+    if (name && name.toUpperCase() !== "N/A" && name.trim() !== "") {
+      const key = `${name.trim()}__${(code || 'N/A').trim()}`;
+      if (!acc[key]) {
+        acc[key] = { name: name.trim(), code: code || 'N/A', count: 0 };
+      }
+      acc[key].count += 1;
     }
     return acc;
   }, {});
-  const activeAgents = Object.entries(agentGroups)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([name, count]) => ({ name, count }));
+  const activeAgents = Object.values(agentGroups)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 3);
 
   // 7. Active Events/Sessions Summary (Split Dropoffs panel)
   const eventGroups = filteredLeads.reduce((acc: {[key: string]: number}, l) => {
@@ -354,6 +358,10 @@ export default function LeadsDashboard() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3)
     .map(([name, count]) => ({ name, count }));
+
+  const unmappedLeadsCount = filteredLeads.filter(
+    l => !l.executive_name || l.executive_name.toUpperCase() === "N/A" || l.executive_name.trim() === ""
+  ).length;
 
   // Colors for Donut Slices
   const sliceColors = ['#2563eb', '#10b981', '#f59e0b', '#dc2626', '#8b5cf6', '#6b7280'];
@@ -1023,53 +1031,149 @@ export default function LeadsDashboard() {
                 </div>
 
                 {/* Agents & Events Overview Card */}
-                <div className="glass-card rounded-3xl p-6 md:p-8 flex flex-col justify-between shadow-md">
-                  <div>
-                    <h3 className="text-lg md:text-xl font-black text-[var(--text-primary)]">Agents & Events Overview</h3>
-                    <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mt-1">Active agents and sessions overview</p>
+                <div className="glass-card rounded-3xl p-6 md:p-8 flex flex-col justify-between shadow-md border hover:border-[var(--purple-mid)] transition-all duration-300" style={{ borderColor: 'var(--border-subtle)' }}>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg md:text-xl font-black text-[var(--text-primary)]">Agents & Sessions</h3>
+                        <span className="px-2 py-0.5 text-[8px] font-black uppercase tracking-wider bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-md">Live Analytics</span>
+                      </div>
+                      <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mt-1">Real-time performance metrics</p>
+                    </div>
+                    <Sparkles size={16} className="text-indigo-400 animate-pulse" />
                   </div>
 
-                  <div className="my-6 grid grid-cols-2 gap-4">
+                  <div className="my-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
                     
                     {/* Active Agents list */}
-                    <div className="space-y-2">
-                      <p className="text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1">
-                        <User size={10} className="text-indigo-400" /> Active Agents
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5 border-b pb-1.5" style={{ borderColor: 'var(--border-subtle)' }}>
+                        <Users size={12} className="text-indigo-400 shrink-0" /> Active Agents
                       </p>
                       {activeAgents.length === 0 ? (
-                        <p className="text-[10px] italic text-[var(--text-ghost)] font-bold">No agents mapped</p>
+                        <p className="text-[10px] italic text-[var(--text-ghost)] font-bold py-4">No agents mapped</p>
                       ) : (
-                        <div className="space-y-1.5">
-                          {activeAgents.map((ag) => (
-                            <div key={ag.name} className="flex justify-between items-center text-[10px] font-bold p-2 rounded-xl bg-[var(--bg-hover)] border border-[var(--border-subtle)]">
-                              <span className="text-[var(--text-secondary)] truncate max-w-[90px]">{ag.name}</span>
-                              <span className="px-1.5 py-0.5 rounded-md text-[8px] font-black bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">{ag.count} leads</span>
-                            </div>
-                          ))}
+                        <div className="space-y-3">
+                          {(() => {
+                            const maxAgentCount = Math.max(...activeAgents.map(a => a.count), 1);
+                            return activeAgents.map((ag) => {
+                              const percent = (ag.count / maxAgentCount) * 100;
+                              const initials = ag.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                              const avatarGradients = [
+                                'from-indigo-600 to-violet-500',
+                                'from-blue-600 to-cyan-500',
+                                'from-purple-600 to-fuchsia-500'
+                              ];
+                              const gradIndex = ag.name.charCodeAt(0) % avatarGradients.length;
+                              const grad = avatarGradients[gradIndex];
+
+                              return (
+                                <motion.div 
+                                  key={ag.name} 
+                                  whileHover={{ scale: 1.02 }}
+                                  className="space-y-1.5 p-2 rounded-2xl bg-white/[0.01] hover:bg-white/[0.03] border border-transparent hover:border-white/5 transition-all duration-200"
+                                >
+                                  <div className="flex justify-between items-center gap-2">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      {/* Mini avatar */}
+                                      <div className={`w-6 h-6 rounded-lg bg-gradient-to-br ${grad} flex items-center justify-center text-[9px] font-black text-white shadow-sm shrink-0`}>
+                                        {initials}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-xs font-black text-[var(--text-primary)] truncate">{ag.name}</p>
+                                        <span className="text-[8px] font-mono font-bold bg-white/5 border border-white/10 px-1 py-0.5 rounded text-[var(--text-secondary)] mt-0.5 inline-block">
+                                          LG: {ag.code}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <span className="px-2 py-0.5 rounded-lg text-[9px] font-black bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 whitespace-nowrap">
+                                      {ag.count} leads
+                                    </span>
+                                  </div>
+                                  
+                                  {/* Progress bar */}
+                                  <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(99,102,241,0.06)' }}>
+                                    <motion.div
+                                      initial={{ width: 0 }}
+                                      animate={{ width: `${percent}%` }}
+                                      transition={{ duration: 0.8, ease: "easeOut" }}
+                                      className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 shadow-[0_0_8px_rgba(99,102,241,0.3)]"
+                                    />
+                                  </div>
+                                </motion.div>
+                              );
+                            });
+                          })()}
                         </div>
                       )}
                     </div>
 
                     {/* Active Events list */}
-                    <div className="space-y-2">
-                      <p className="text-[9px] font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1">
-                        <Activity size={10} className="text-emerald-400" /> Active Events
+                    <div className="space-y-3">
+                      <p className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5 border-b pb-1.5" style={{ borderColor: 'var(--border-subtle)' }}>
+                        <Activity size={12} className="text-emerald-400 shrink-0" /> Active Events
                       </p>
                       {activeEvents.length === 0 ? (
-                        <p className="text-[10px] italic text-[var(--text-ghost)] font-bold">No events recorded</p>
+                        <p className="text-[10px] italic text-[var(--text-ghost)] font-bold py-4">No active events</p>
                       ) : (
-                        <div className="space-y-1.5">
-                          {activeEvents.map((ev) => (
-                            <div key={ev.name} className="flex justify-between items-center text-[10px] font-bold p-2 rounded-xl bg-[var(--bg-hover)] border border-[var(--border-subtle)]">
-                              <span className="text-[var(--text-secondary)] truncate max-w-[90px]">{ev.name}</span>
-                              <span className="px-1.5 py-0.5 rounded-md text-[8px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">{ev.count} leads</span>
-                            </div>
-                          ))}
+                        <div className="space-y-3">
+                          {(() => {
+                            const maxEventCount = Math.max(...activeEvents.map(e => e.count), 1);
+                            return activeEvents.map((ev) => {
+                              const percent = (ev.count / maxEventCount) * 100;
+                              return (
+                                <motion.div 
+                                  key={ev.name} 
+                                  whileHover={{ scale: 1.02 }}
+                                  className="space-y-1.5 p-2 rounded-2xl bg-white/[0.01] hover:bg-white/[0.03] border border-transparent hover:border-white/5 transition-all duration-200"
+                                >
+                                  <div className="flex justify-between items-center gap-2">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      {/* Pulse dot indicator */}
+                                      <span className="relative flex h-2 w-2 shrink-0">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                      </span>
+                                      <span className="text-xs font-black text-[var(--text-primary)] truncate" title={ev.name}>
+                                        {ev.name}
+                                      </span>
+                                    </div>
+                                    <span className="px-2 py-0.5 rounded-lg text-[9px] font-black bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
+                                      {ev.count} leads
+                                    </span>
+                                  </div>
+                                  
+                                  {/* Progress bar */}
+                                  <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(16,185,129,0.06)' }}>
+                                    <motion.div
+                                      initial={{ width: 0 }}
+                                      animate={{ width: `${percent}%` }}
+                                      transition={{ duration: 0.8, ease: "easeOut" }}
+                                      className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_8px_rgba(16,185,129,0.3)]"
+                                    />
+                                  </div>
+                                </motion.div>
+                              );
+                            });
+                          })()}
                         </div>
                       )}
                     </div>
 
                   </div>
+
+                  {/* Footer Banner - Pending Unmapped Leads count */}
+                  {unmappedLeadsCount > 0 && (
+                    <div className="flex items-center justify-between p-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 mt-2 text-[10px] font-bold">
+                      <span className="flex items-center gap-1.5 text-amber-500">
+                        <Info size={12} className="stroke-[2.5]" />
+                        Pending Agent Assignment
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full font-black text-[9px] bg-amber-500/10 text-amber-500 border border-amber-500/20 shadow-sm animate-pulse">
+                        {unmappedLeadsCount} leads unmapped
+                      </span>
+                    </div>
+                  )}
                 </div>
 
               </div>
