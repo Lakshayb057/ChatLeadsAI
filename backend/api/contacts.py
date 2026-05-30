@@ -48,6 +48,7 @@ class ContactUpdate(BaseModel):
     company: Optional[str] = None
     lead_score: Optional[str] = None
     arn: Optional[str] = None
+    excel_updated: Optional[bool] = None
 
     # Excel Matched Fields
     creation_date_time: Optional[str] = None

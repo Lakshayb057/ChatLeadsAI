@@ -7,7 +7,7 @@ import {
   TrendingUp, Search, Filter, ClipboardList, MapPin, CreditCard,
   User, ChevronDown, ChevronUp, Clock, Info, Check, Copy, ExternalLink,
   Calendar, Building2, Phone, Mail, Sparkles, Server, ArrowLeft,
-  Activity, Zap, Hash, Edit
+  Activity, Zap, Hash, Edit, Trash2
 } from 'lucide-react';
 import { useWebSocket } from '../../hooks/useWebSocket';
 
@@ -128,6 +128,41 @@ export default function LeadsDashboard() {
       console.error("Failed to save lead updates", e);
     } finally {
       setSavingEdit(false);
+    }
+  };
+
+  const [removingLead, setRemovingLead] = useState(false);
+
+  const handleRemoveFromDashboard = async () => {
+    if (!selectedLead) return;
+    if (!window.confirm("Are you sure you want to remove this lead from the leads dashboard? It will remain intact on the regular leads page.")) return;
+    
+    setRemovingLead(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`${apiUrl}/contacts/${selectedLead.id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          excel_updated: false
+        })
+      });
+
+      if (!res.ok) throw new Error();
+      
+      // Update local state by removing it from the leads list (since the dashboard only shows matched leads)
+      setLeads(prev => prev.filter(l => l.id !== selectedLead.id));
+      setSelectedLead(null);
+    } catch (e) {
+      console.error("Failed to remove lead from dashboard", e);
+      alert("Failed to remove lead. Please try again.");
+    } finally {
+      setRemovingLead(false);
     }
   };
   
@@ -1165,6 +1200,15 @@ export default function LeadsDashboard() {
                   
                   {/* Actions Header Row */}
                   <div className="flex items-center gap-2">
+                    {!isEditing && isSuperAdmin && (
+                      <button 
+                        onClick={handleRemoveFromDashboard}
+                        disabled={removingLead}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/10 shadow-sm"
+                      >
+                        <Trash2 size={11} /> {removingLead ? 'Removing...' : 'Remove'}
+                      </button>
+                    )}
                     {!isEditing ? (
                       <button 
                         onClick={handleStartEdit}
