@@ -63,8 +63,20 @@ interface Lead {
   agent_venue?: string | null;
 }
 
+interface Agent {
+  id: number;
+  lg_code: string;
+  executive_name: string;
+  executive_code: string;
+  city: string;
+  place: string;
+  venue: string;
+  user_id: number;
+}
+
 export default function LeadsDashboard() {
   const [leads, setLeads] = useState<Lead[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -194,16 +206,33 @@ export default function LeadsDashboard() {
     }
   };
 
+  const fetchAgents = async () => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers: HeadersInit = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`${apiUrl}/agents/`, { headers });
+      if (!res.ok) throw new Error();
+      const data: Agent[] = await res.json();
+      setAgents(data);
+    } catch (e) {
+      console.error("Failed to fetch agents:", e);
+    }
+  };
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setRole(localStorage.getItem('role') || 'user');
     }
     fetchMatchedLeads();
+    fetchAgents();
   }, []);
 
   useEffect(() => {
     if (lastMessage?.event === 'lead_updated') {
       fetchMatchedLeads();
+      fetchAgents();
     }
   }, [lastMessage]);
 
@@ -326,7 +355,7 @@ export default function LeadsDashboard() {
     .slice(0, 5)
     .map(([name, value]) => ({ name, value }));
 
-  // 6. Mapped Agents Summary (Split Dropoffs panel)
+  // 6. Mapped Agents Summary (Split Dropoffs panel) - Uses all agents present in database
   const agentGroups = filteredLeads.reduce((acc: {[key: string]: {name: string, code: string, count: number}}, l) => {
     const name = l.executive_name;
     const code = l.executive_code;
@@ -339,11 +368,22 @@ export default function LeadsDashboard() {
     }
     return acc;
   }, {});
-  const activeAgents = Object.values(agentGroups)
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 3);
 
-  // 7. Active Events/Sessions Summary (Split Dropoffs panel)
+  const activeAgents = agents.length > 0
+    ? agents.map(agent => {
+        const count = filteredLeads.filter(l => 
+          l.lg_code && agent.lg_code && 
+          l.lg_code.trim().toUpperCase() === agent.lg_code.trim().toUpperCase()
+        ).length;
+        return {
+          name: agent.executive_name,
+          code: agent.executive_code,
+          count: count
+        };
+      }).sort((a, b) => b.count - a.count)
+    : Object.values(agentGroups).sort((a, b) => b.count - a.count);
+
+  // 7. Active Events/Sessions Summary (Split Dropoffs panel) - First 3 letters of City, Name of Place, First word of Venue with respect to all agents
   const eventGroups = filteredLeads.reduce((acc: {[key: string]: number}, l) => {
     if (l.session_id) {
       const cleanEvent = l.session_id.replace(/_/g, ' ')
@@ -354,10 +394,23 @@ export default function LeadsDashboard() {
     }
     return acc;
   }, {});
-  const activeEvents = Object.entries(eventGroups)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([name, count]) => ({ name, count }));
+
+  const activeEvents = agents.length > 0
+    ? agents.map(agent => {
+        const city3 = (agent.city || '').trim().slice(0, 3).toUpperCase();
+        const place = (agent.place || '').trim();
+        const venue1 = (agent.venue || '').trim().split(/\s+/)[0];
+        const eventName = `${city3} - ${place} - ${venue1}`;
+        const count = filteredLeads.filter(l => 
+          l.lg_code && agent.lg_code && 
+          l.lg_code.trim().toUpperCase() === agent.lg_code.trim().toUpperCase()
+        ).length;
+        return {
+          name: eventName,
+          count: count
+        };
+      }).sort((a, b) => b.count - a.count)
+    : Object.entries(eventGroups).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
 
   const unmappedLeadsCount = filteredLeads.filter(
     l => !l.executive_name || l.executive_name.toUpperCase() === "N/A" || l.executive_name.trim() === ""
@@ -734,35 +787,11 @@ export default function LeadsDashboard() {
                   
                   {/* Custom SVG Donut Chart */}
                   <div className="my-6 flex items-center justify-center relative">
-                    <svg className="w-48 h-48 -rotate-90 filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.2)]">
-                      <defs>
-                        {/* Glow Filter */}
-                        <filter id="donutGlow" x="-20%" y="-20%" width="140%" height="140%">
-                          <feGaussianBlur stdDeviation="3" result="blur" />
-                          <feMerge>
-                            <feMergeNode in="blur" />
-                            <feMergeNode in="SourceGraphic" />
-                          </feMerge>
-                        </filter>
-                        {/* Linear Gradients */}
-                        <linearGradient id="decisionGradApprove" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#3b82f6" />
-                          <stop offset="100%" stopColor="#60a5fa" />
-                        </linearGradient>
-                        <linearGradient id="decisionGradInprocess" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#10b981" />
-                          <stop offset="100%" stopColor="#34d399" />
-                        </linearGradient>
-                        <linearGradient id="decisionGradDecline" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#f59e0b" />
-                          <stop offset="100%" stopColor="#f43f5e" />
-                        </linearGradient>
-                      </defs>
-
+                    <svg className="w-48 h-48 -rotate-90">
                       {/* Structural track ring */}
-                      <circle cx="50%" cy="50%" r="65" fill="transparent" stroke="rgba(255,255,255,0.03)" strokeWidth="12" />
+                      <circle cx="50%" cy="50%" r="65" fill="transparent" stroke="rgba(0, 0, 0, 0.04)" strokeWidth="12" />
                       {/* Glassmorphic center card ring */}
-                      <circle cx="50%" cy="50%" r="48" fill="rgba(255,255,255,0.01)" stroke="rgba(255,255,255,0.05)" strokeWidth="1.5" />
+                      <circle cx="50%" cy="50%" r="48" fill="rgba(255, 255, 255, 0.2)" stroke="var(--border-glow)" strokeWidth="1.5" />
 
                       {(() => {
                         let currentOffset = 0;
@@ -776,10 +805,10 @@ export default function LeadsDashboard() {
 
                           const clean = d.name.toLowerCase();
                           const strokeVal = clean.includes('approve') || clean === 'yes' 
-                            ? 'url(#decisionGradApprove)' 
+                            ? '#10b981' 
                             : clean.includes('decline') || clean === 'no' 
-                            ? 'url(#decisionGradDecline)' 
-                            : 'url(#decisionGradInprocess)';
+                            ? '#ef4444' 
+                            : '#3b82f6';
 
                           return (
                             <motion.circle
@@ -795,14 +824,13 @@ export default function LeadsDashboard() {
                               animate={{ strokeDasharray: `${segmentLength} ${dashArray - segmentLength}` }}
                               transition={{ duration: 0.8, ease: "easeOut" }}
                               className="cursor-pointer transition-all duration-300 hover:stroke-[15px]"
-                              style={{ filter: 'url(#donutGlow)' }}
                             />
                           );
                         });
                       })()}
                     </svg>
                     
-                    <div className="absolute flex flex-col items-center justify-center p-4 rounded-full bg-black/10 backdrop-blur-sm border border-white/5 w-24 h-24 shadow-inner">
+                    <div className="absolute flex flex-col items-center justify-center p-4 rounded-full bg-white/60 backdrop-blur-md border border-[var(--border-glow)] w-24 h-24 shadow-sm">
                       <span className="text-2xl font-black text-[var(--text-primary)] tracking-tight">{totalCount}</span>
                       <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)] mt-0.5">Leads</span>
                     </div>
@@ -812,15 +840,15 @@ export default function LeadsDashboard() {
                   <div className="space-y-2 pt-2 border-t border-white/5">
                     {decisionChartData.map((d, i) => {
                       const clean = d.name.toLowerCase();
-                      const legendGradient = clean.includes('approve') || clean === 'yes'
-                        ? 'from-blue-500 to-sky-400'
+                      const legendColor = clean.includes('approve') || clean === 'yes'
+                        ? '#10b981'
                         : clean.includes('decline') || clean === 'no'
-                        ? 'from-amber-500 to-rose-500'
-                        : 'from-emerald-500 to-teal-400';
+                        ? '#ef4444'
+                        : '#3b82f6';
                       return (
                         <div key={d.name} className="flex justify-between items-center text-xs font-bold px-1.5 py-1 rounded-xl hover:bg-white/[0.02] transition-colors">
                           <div className="flex items-center gap-2 min-w-0">
-                            <div className={`w-3 h-3 rounded-md bg-gradient-to-br ${legendGradient} shadow-md`} />
+                            <div className="w-3 h-3 rounded-md shadow-sm shrink-0" style={{ backgroundColor: legendColor }} />
                             <span style={{ color: 'var(--text-secondary)' }} className="truncate max-w-[150px]">{d.name}</span>
                           </div>
                           <span className="font-black text-[var(--text-primary)]">{d.value} ({((d.value/totalCount)*100).toFixed(0)}%)</span>
@@ -884,47 +912,25 @@ export default function LeadsDashboard() {
                   
                   {/* Custom SVG Donut Chart */}
                   <div className="my-6 flex items-center justify-center relative">
-                    <svg className="w-48 h-48 -rotate-90 filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.2)]">
-                      <defs>
-                        {/* Glow Filter */}
-                        <filter id="remarksGlow" x="-20%" y="-20%" width="140%" height="140%">
-                          <feGaussianBlur stdDeviation="3" result="blur" />
-                          <feMerge>
-                            <feMergeNode in="blur" />
-                            <feMergeNode in="SourceGraphic" />
-                          </feMerge>
-                        </filter>
-                        {/* Linear Gradients */}
-                        <linearGradient id="remarksGrad0" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#a855f7" />
-                          <stop offset="100%" stopColor="#c084fc" />
-                        </linearGradient>
-                        <linearGradient id="remarksGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#ec4899" />
-                          <stop offset="100%" stopColor="#f43f5e" />
-                        </linearGradient>
-                        <linearGradient id="remarksGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#3b82f6" />
-                          <stop offset="100%" stopColor="#60a5fa" />
-                        </linearGradient>
-                        <linearGradient id="remarksGrad3" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#14b8a6" />
-                          <stop offset="100%" stopColor="#2dd4bf" />
-                        </linearGradient>
-                        <linearGradient id="remarksGrad4" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#f59e0b" />
-                          <stop offset="100%" stopColor="#fb923c" />
-                        </linearGradient>
-                      </defs>
-
+                    <svg className="w-48 h-48 -rotate-90">
                       {/* Structural track ring */}
-                      <circle cx="50%" cy="50%" r="65" fill="transparent" stroke="rgba(255,255,255,0.03)" strokeWidth="12" />
+                      <circle cx="50%" cy="50%" r="65" fill="transparent" stroke="rgba(0, 0, 0, 0.04)" strokeWidth="12" />
                       {/* Glassmorphic center card ring */}
-                      <circle cx="50%" cy="50%" r="48" fill="rgba(255,255,255,0.01)" stroke="rgba(255,255,255,0.05)" strokeWidth="1.5" />
+                      <circle cx="50%" cy="50%" r="48" fill="rgba(255, 255, 255, 0.2)" stroke="var(--border-glow)" strokeWidth="1.5" />
 
                       {(() => {
                         let currentOffset = 0;
                         const gap = remarksChartData.length > 1 ? 5 : 0;
+                        const remarksColors = [
+                          '#8b5cf6', // Vibrant Violet
+                          '#ec4899', // Vibrant Deep Pink
+                          '#3b82f6', // Vibrant Royal Blue
+                          '#10b981', // Vibrant Emerald
+                          '#f59e0b', // Vibrant Amber
+                          '#ef4444', // Vibrant Red
+                          '#06b6d4', // Vibrant Cyan
+                        ];
+
                         return remarksChartData.map((d, i) => {
                           const percent = (d.value / totalCount) * 100;
                           const dashArray = 2 * Math.PI * 65; 
@@ -932,7 +938,7 @@ export default function LeadsDashboard() {
                           const strokeOffset = currentOffset;
                           currentOffset += (dashArray * percent) / 100;
 
-                          const strokeVal = `url(#remarksGrad${i % 5})`;
+                          const strokeVal = remarksColors[i % remarksColors.length];
 
                           return (
                             <motion.circle
@@ -948,14 +954,13 @@ export default function LeadsDashboard() {
                               animate={{ strokeDasharray: `${segmentLength} ${dashArray - segmentLength}` }}
                               transition={{ duration: 0.8, ease: "easeOut" }}
                               className="cursor-pointer transition-all duration-300 hover:stroke-[15px]"
-                              style={{ filter: 'url(#remarksGlow)' }}
                             />
                           );
                         });
                       })()}
                     </svg>
                     
-                    <div className="absolute flex flex-col items-center justify-center p-4 rounded-full bg-black/10 backdrop-blur-sm border border-white/5 w-24 h-24 shadow-inner">
+                    <div className="absolute flex flex-col items-center justify-center p-4 rounded-full bg-white/60 backdrop-blur-md border border-[var(--border-glow)] w-24 h-24 shadow-sm">
                       <span className="text-2xl font-black text-[var(--text-primary)] tracking-tight">{totalCount}</span>
                       <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)] mt-0.5">Leads</span>
                     </div>
@@ -967,18 +972,20 @@ export default function LeadsDashboard() {
                       <p className="text-center italic text-xs font-bold py-4" style={{ color: 'var(--text-ghost)' }}>No remarks data</p>
                     ) : (
                       remarksChartData.map((d, i) => {
-                        const legendGradients = [
-                          'from-purple-500 to-fuchsia-400',
-                          'from-pink-500 to-rose-400',
-                          'from-blue-500 to-sky-400',
-                          'from-teal-500 to-cyan-400',
-                          'from-amber-500 to-orange-400'
+                        const remarksColors = [
+                          '#8b5cf6', // Vibrant Violet
+                          '#ec4899', // Vibrant Deep Pink
+                          '#3b82f6', // Vibrant Royal Blue
+                          '#10b981', // Vibrant Emerald
+                          '#f59e0b', // Vibrant Amber
+                          '#ef4444', // Vibrant Red
+                          '#06b6d4', // Vibrant Cyan
                         ];
-                        const grad = legendGradients[i % legendGradients.length];
+                        const solidColor = remarksColors[i % remarksColors.length];
                         return (
                           <div key={d.name} className="flex justify-between items-center text-xs font-bold px-1.5 py-1 rounded-xl hover:bg-white/[0.02] transition-colors">
                             <div className="flex items-center gap-2 min-w-0">
-                              <div className={`w-3 h-3 rounded-md bg-gradient-to-br ${grad} shadow-md shrink-0`} />
+                              <div className="w-3 h-3 rounded-md shadow-sm shrink-0" style={{ backgroundColor: solidColor }} />
                               <span style={{ color: 'var(--text-secondary)' }} className="truncate max-w-[150px]">{d.name}</span>
                             </div>
                             <span className="font-black text-[var(--text-primary)] shrink-0">{d.value} ({((d.value/totalCount)*100).toFixed(0)}%)</span>

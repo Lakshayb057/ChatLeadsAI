@@ -77,6 +77,7 @@ export default function LeadsPage() {
   const [filterSession, setFilterSession] = useState('');
   const [filterScore, setFilterScore] = useState('');
   const [filterCompany, setFilterCompany] = useState('');
+  const [filterExcelSync, setFilterExcelSync] = useState('');
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [showDeleteAll, setShowDeleteAll] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
@@ -216,6 +217,11 @@ export default function LeadsPage() {
       if (searchTerm) params.append('query', searchTerm);
       if (filterSession) params.append('session_id', filterSession);
       if (filterScore) params.append('score', filterScore);
+      if (filterExcelSync === 'synced') {
+        params.append('excel_updated', 'true');
+      } else if (filterExcelSync === 'not_synced') {
+        params.append('excel_updated', 'false');
+      }
       const res = await fetch(`${apiUrl}/contacts/?${params}`, { headers });
       if (!res.ok) throw new Error();
       const data: Lead[] = await res.json();
@@ -280,7 +286,7 @@ export default function LeadsPage() {
     setShowDeleteAll(false); fetchLeads();
   };
 
-  useEffect(() => { fetchLeads(); }, [searchTerm, filterSession, filterScore, filterCompany]);
+  useEffect(() => { fetchLeads(); }, [searchTerm, filterSession, filterScore, filterCompany, filterExcelSync]);
   useEffect(() => { fetchSessions(); }, []);
   useEffect(() => { if (lastMessage?.event === 'lead_updated') fetchLeads(); }, [lastMessage]);
 
@@ -890,6 +896,18 @@ export default function LeadsPage() {
             </select>
           </div>
 
+          {/* Excel Sync Status filter */}
+          <div className="relative flex-1 min-w-0 sm:min-w-[150px]">
+            <FileSpreadsheet size={14} className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 pointer-events-none w-3 h-3 md:w-[14px] md:h-[14px]" style={{ color: 'var(--text-ghost)' }} />
+            <select value={filterExcelSync} onChange={e => setFilterExcelSync(e.target.value)}
+              className="hover:border-[var(--border-bright)] transition-colors text-xs md:text-sm"
+              style={{ ...selectStyle, paddingLeft: '2rem', paddingRight: '1rem', height: '100%', minHeight: '44px' }}>
+              <option value="">All Sync Status</option>
+              <option value="synced">Synced Only</option>
+              <option value="not_synced">Not Synced Only</option>
+            </select>
+          </div>
+
           {/* Company filter — superadmin only */}
           {isSuperAdmin && (
             <div className="relative flex-1 min-w-0 sm:min-w-[150px]">
@@ -1000,6 +1018,47 @@ function LeadCard({ lead, index, isSuperAdmin, onDelete, onEdit }: {
   const isHot = lead.lead_score === 'Hot';
   const isWarm = lead.lead_score === 'Warm';
   const [showExcelDetails, setShowExcelDetails] = useState(false);
+
+  // Add remarks state & handler
+  const [localRemark, setLocalRemark] = useState(lead.remarks || '');
+  const [isSaving, setIsSaving] = useState(false);
+  const [remarksSaved, setRemarksSaved] = useState(false);
+
+  // Sync state if lead changes
+  useEffect(() => {
+    setLocalRemark(lead.remarks || '');
+  }, [lead.remarks]);
+
+  const handleSaveRemark = async () => {
+    setIsSaving(true);
+    setRemarksSaved(false);
+    try {
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/$/, '');
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`${apiUrl}/contacts/${lead.id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          remarks: localRemark
+        })
+      });
+
+      if (!res.ok) throw new Error();
+      
+      setRemarksSaved(true);
+      setTimeout(() => setRemarksSaved(false), 3000);
+    } catch (e) {
+      console.error("Failed to save remark", e);
+      alert("Failed to save remark. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const accentColor = isHot ? '#f59e0b' : isWarm ? '#2563eb' : '#6b7280';
   const accentBg = isHot
@@ -1243,6 +1302,54 @@ function LeadCard({ lead, index, isSuperAdmin, onDelete, onEdit }: {
                 </motion.div>
               )}
             </AnimatePresence>
+          </div>
+        )}
+
+        {/* Inline Remarks Editor for Un-synced Leads */}
+        {!lead.excel_updated && (
+          <div className="mt-4 pt-4 border-t space-y-2" style={{ borderColor: 'var(--border-subtle)' }}>
+            <div className="flex justify-between items-center">
+              <label className="block text-[9px] md:text-[10px] font-black uppercase tracking-wider text-[var(--purple-mid)]">
+                Lead Remarks (Un-synced)
+              </label>
+              {remarksSaved && (
+                <motion.span 
+                  initial={{ opacity: 0, scale: 0.8 }} 
+                  animate={{ opacity: 1, scale: 1 }} 
+                  className="text-[9px] font-bold text-emerald-600 flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full"
+                >
+                  <Check size={10} className="stroke-[3]" /> Saved successfully
+                </motion.span>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <input 
+                type="text" 
+                value={localRemark} 
+                onChange={e => setLocalRemark(e.target.value)}
+                placeholder="Enter remarks for this un-synced lead..."
+                disabled={isSaving}
+                className="input-dark w-full px-4 py-2.5 rounded-xl font-bold text-xs transition-all focus:ring-2 focus:ring-[var(--purple-mid)] disabled:opacity-50"
+              />
+              <button 
+                onClick={handleSaveRemark}
+                disabled={isSaving || localRemark === (lead.remarks || '')}
+                className="btn-primary px-4 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shrink-0 disabled:opacity-50 min-h-[38px] cursor-pointer"
+              >
+                {isSaving ? (
+                  <motion.div 
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent"
+                  />
+                ) : (
+                  <>
+                    <Check size={12} className="stroke-[2.5]" /> Save
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         )}
 
