@@ -374,7 +374,7 @@ export default function LeadsDashboard() {
     return acc;
   }, {});
 
-  const activeAgents = agents.length > 0
+  const activeAgents = (agents.length > 0
     ? agents.map(agent => {
         const count = filteredLeads.filter(l => 
           l.lg_code && agent.lg_code && 
@@ -385,8 +385,9 @@ export default function LeadsDashboard() {
           code: agent.executive_code,
           count: count
         };
-      }).sort((a, b) => b.count - a.count)
-    : Object.values(agentGroups).sort((a, b) => b.count - a.count);
+      })
+    : Object.values(agentGroups)
+  ).filter(ag => ag.count > 0).sort((a, b) => b.count - a.count);
 
   // 7. Active Events/Sessions Summary (Split Dropoffs panel) - First 3 letters of City, Name of Place, First word of Venue with respect to all agents
   const eventGroups = filteredLeads.reduce((acc: {[key: string]: number}, l) => {
@@ -400,7 +401,7 @@ export default function LeadsDashboard() {
     return acc;
   }, {});
 
-  const activeEvents = agents.length > 0
+  const activeEvents = (agents.length > 0
     ? agents.map(agent => {
         const city3 = (agent.city || '').trim().slice(0, 3).toUpperCase();
         const place = (agent.place || '').trim();
@@ -414,8 +415,9 @@ export default function LeadsDashboard() {
           name: eventName,
           count: count
         };
-      }).sort((a, b) => b.count - a.count)
-    : Object.entries(eventGroups).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count);
+      })
+    : Object.entries(eventGroups).map(([name, count]) => ({ name, count }))
+  ).filter(ev => ev.count > 0).sort((a, b) => b.count - a.count);
 
   const unmappedLeadsCount = filteredLeads.filter(
     l => !l.executive_name || l.executive_name.toUpperCase() === "N/A" || l.executive_name.trim() === ""
