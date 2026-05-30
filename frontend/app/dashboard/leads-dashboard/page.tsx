@@ -182,6 +182,11 @@ export default function LeadsDashboard() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Solid Pie Chart Active Hover/Click States
+  const [activeDecision, setActiveDecision] = useState<{name: string, value: number, percent: number} | null>(null);
+  const [activeRemark, setActiveRemark] = useState<{name: string, value: number, percent: number} | null>(null);
+  const [activeState, setActiveState] = useState<{name: string, value: number, percent: number} | null>(null);
+
   const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
   const apiUrl = rawApiUrl.replace(/\/$/, '');
   const rawWsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/ws';
@@ -820,14 +825,59 @@ export default function LeadsDashboard() {
                               strokeDasharray={`${segmentLength} ${dashArray - segmentLength}`}
                               strokeDashoffset={-strokeOffset}
                               initial={{ strokeDasharray: `0 ${dashArray}` }}
-                              animate={{ strokeDasharray: `${segmentLength} ${dashArray - segmentLength}` }}
+                              animate={{ 
+                                strokeDasharray: `${segmentLength} ${dashArray - segmentLength}`,
+                                scale: activeDecision?.name === d.name ? 1.06 : 1
+                              }}
                               transition={{ duration: 0.8, ease: "easeOut" }}
                               className="cursor-pointer transition-all duration-300 hover:opacity-90"
+                              style={{ transformOrigin: '100px 100px' }}
+                              onMouseEnter={() => setActiveDecision({ name: d.name, value: d.value, percent })}
+                              onMouseLeave={() => setActiveDecision(null)}
+                              onClick={() => {
+                                if (activeDecision?.name === d.name) {
+                                  setActiveDecision(null);
+                                } else {
+                                  setActiveDecision({ name: d.name, value: d.value, percent });
+                                }
+                              }}
                             />
                           );
                         });
                       })()}
                     </svg>
+
+                    {/* Dynamic Center details HUD overlay */}
+                    <AnimatePresence>
+                      {activeDecision && (() => {
+                        const clean = activeDecision.name.toLowerCase();
+                        const badgeColor = clean.includes('approve') || clean === 'yes'
+                          ? '#10b981'
+                          : clean.includes('decline') || clean === 'no'
+                          ? '#ef4444'
+                          : '#3b82f6';
+                        return (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            transition={{ duration: 0.2, ease: "easeOut" }}
+                            className="absolute flex flex-col items-center justify-center p-3 rounded-full bg-white/90 backdrop-blur-lg border border-[var(--border-glow)] w-28 h-28 shadow-[0_12px_32px_rgba(0,0,0,0.12)] pointer-events-none select-none"
+                          >
+                            <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Decision</span>
+                            <span className="text-xs font-black text-[var(--text-primary)] truncate max-w-[90px] text-center" title={activeDecision.name}>
+                              {activeDecision.name}
+                            </span>
+                            <span className="text-sm font-black mt-0.5" style={{ color: badgeColor }}>
+                              {activeDecision.value} {activeDecision.value === 1 ? 'Lead' : 'Leads'}
+                            </span>
+                            <span className="text-[9px] font-bold text-[var(--text-secondary)] mt-0.5 bg-white/10 px-1.5 py-0.5 rounded-md border border-white/5 whitespace-nowrap">
+                              {activeDecision.percent.toFixed(0)}% Share
+                            </span>
+                          </motion.div>
+                        );
+                      })()}
+                    </AnimatePresence>
                   </div>
 
                   {/* Legends */}
@@ -839,8 +889,24 @@ export default function LeadsDashboard() {
                         : clean.includes('decline') || clean === 'no'
                         ? '#ef4444'
                         : '#3b82f6';
+                      const isActive = activeDecision?.name === d.name;
+                      const percent = (d.value / totalCount) * 100;
                       return (
-                        <div key={d.name} className="flex justify-between items-center text-xs font-bold px-1.5 py-1 rounded-xl hover:bg-white/[0.02] transition-colors">
+                        <div 
+                          key={d.name} 
+                          className={`flex justify-between items-center text-xs font-bold px-2 py-1.5 rounded-xl transition-all duration-200 cursor-pointer ${
+                            isActive ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.02)] scale-[1.02]' : 'border border-transparent hover:bg-white/[0.02]'
+                          }`}
+                          onMouseEnter={() => setActiveDecision({ name: d.name, value: d.value, percent })}
+                          onMouseLeave={() => setActiveDecision(null)}
+                          onClick={() => {
+                            if (activeDecision?.name === d.name) {
+                              setActiveDecision(null);
+                            } else {
+                              setActiveDecision({ name: d.name, value: d.value, percent });
+                            }
+                          }}
+                        >
                           <div className="flex items-center gap-2 min-w-0">
                             <div className="w-3 h-3 rounded-md shadow-sm shrink-0" style={{ backgroundColor: legendColor }} />
                             <span style={{ color: 'var(--text-secondary)' }} className="truncate max-w-[150px]">{d.name}</span>
@@ -944,14 +1010,64 @@ export default function LeadsDashboard() {
                               strokeDasharray={`${segmentLength} ${dashArray - segmentLength}`}
                               strokeDashoffset={-strokeOffset}
                               initial={{ strokeDasharray: `0 ${dashArray}` }}
-                              animate={{ strokeDasharray: `${segmentLength} ${dashArray - segmentLength}` }}
+                              animate={{ 
+                                strokeDasharray: `${segmentLength} ${dashArray - segmentLength}`,
+                                scale: activeRemark?.name === d.name ? 1.06 : 1
+                              }}
                               transition={{ duration: 0.8, ease: "easeOut" }}
                               className="cursor-pointer transition-all duration-300 hover:opacity-90"
+                              style={{ transformOrigin: '100px 100px' }}
+                              onMouseEnter={() => setActiveRemark({ name: d.name, value: d.value, percent })}
+                              onMouseLeave={() => setActiveRemark(null)}
+                              onClick={() => {
+                                if (activeRemark?.name === d.name) {
+                                  setActiveRemark(null);
+                                } else {
+                                  setActiveRemark({ name: d.name, value: d.value, percent });
+                                }
+                              }}
                             />
                           );
                         });
                       })()}
                     </svg>
+
+                    {/* Dynamic Center details HUD overlay */}
+                    <AnimatePresence>
+                      {activeRemark && (() => {
+                        const remarksColors = [
+                          '#8b5cf6', // Vibrant Violet
+                          '#ec4899', // Vibrant Deep Pink
+                          '#3b82f6', // Vibrant Royal Blue
+                          '#10b981', // Vibrant Emerald
+                          '#f59e0b', // Vibrant Amber
+                          '#ef4444', // Vibrant Red
+                          '#06b6d4', // Vibrant Cyan
+                        ];
+                        const activeIndex = remarksChartData.findIndex(r => r.name === activeRemark.name);
+                        const badgeColor = activeIndex !== -1 ? remarksColors[activeIndex % remarksColors.length] : '#8b5cf6';
+                        return (
+                          <motion.div
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.8 }}
+                            transition={{ duration: 0.2, ease: "easeOut" }}
+                            className="absolute flex flex-col items-center justify-center p-3 rounded-full bg-white/90 backdrop-blur-lg border border-[var(--border-glow)] w-28 h-28 shadow-[0_12px_32px_rgba(0,0,0,0.12)] pointer-events-none select-none"
+                          >
+                            <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-0.5">Remarks</span>
+                            <span className="text-xs font-black text-[var(--text-primary)] truncate max-w-[90px] text-center" title={activeRemark.name}>
+                              {activeRemark.name}
+                            </span>
+                            <span className="text-sm font-black mt-0.5" style={{ color: badgeColor }}>
+                              {activeRemark.value} {activeRemark.value === 1 ? 'Lead' : 'Leads'}
+                            </span>
+                            <span className="text-[9px] font-bold text-[var(--text-secondary)] mt-0.5 bg-white/10 px-1.5 py-0.5 rounded-md border border-white/5 whitespace-nowrap">
+                              {activeRemark.percent.toFixed(0)}% Share
+                            </span>
+                          </motion.div>
+                        );
+                      })()}
+                    </AnimatePresence>
                   </div>
 
                   {/* Legends */}
@@ -970,8 +1086,24 @@ export default function LeadsDashboard() {
                           '#06b6d4', // Vibrant Cyan
                         ];
                         const solidColor = remarksColors[i % remarksColors.length];
+                        const isActive = activeRemark?.name === d.name;
+                        const percent = (d.value / totalCount) * 100;
                         return (
-                          <div key={d.name} className="flex justify-between items-center text-xs font-bold px-1.5 py-1 rounded-xl hover:bg-white/[0.02] transition-colors">
+                          <div 
+                            key={d.name} 
+                            className={`flex justify-between items-center text-xs font-bold px-2 py-1.5 rounded-xl transition-all duration-200 cursor-pointer ${
+                              isActive ? 'bg-white/[0.04] border border-white/10 shadow-[0_0_10px_rgba(255,255,255,0.02)] scale-[1.02]' : 'border border-transparent hover:bg-white/[0.02]'
+                            }`}
+                            onMouseEnter={() => setActiveRemark({ name: d.name, value: d.value, percent })}
+                            onMouseLeave={() => setActiveRemark(null)}
+                            onClick={() => {
+                              if (activeRemark?.name === d.name) {
+                                  setActiveRemark(null);
+                              } else {
+                                  setActiveRemark({ name: d.name, value: d.value, percent });
+                              }
+                            }}
+                          >
                             <div className="flex items-center gap-2 min-w-0">
                               <div className="w-3 h-3 rounded-md shadow-sm shrink-0" style={{ backgroundColor: solidColor }} />
                               <span style={{ color: 'var(--text-secondary)' }} className="truncate max-w-[150px]">{d.name}</span>
@@ -1051,15 +1183,56 @@ export default function LeadsDashboard() {
                                   strokeDasharray={`${segmentLength} ${dashArray - segmentLength}`}
                                   strokeDashoffset={-strokeOffset}
                                   initial={{ strokeDasharray: `0 ${dashArray}` }}
-                                  animate={{ strokeDasharray: `${segmentLength} ${dashArray - segmentLength}` }}
+                                  animate={{ 
+                                    strokeDasharray: `${segmentLength} ${dashArray - segmentLength}`,
+                                    scale: activeState?.name === d.name ? 1.06 : 1
+                                  }}
                                   transition={{ duration: 0.8, ease: "easeOut" }}
                                   className="cursor-pointer transition-all duration-300 hover:opacity-90"
-                                  style={{ filter: `drop-shadow(0 0 6px ${strokeVal}40)` }}
+                                  style={{ transformOrigin: '100px 100px', filter: `drop-shadow(0 0 6px ${strokeVal}40)` }}
+                                  onMouseEnter={() => setActiveState({ name: d.name, value: d.value, percent })}
+                                  onMouseLeave={() => setActiveState(null)}
+                                  onClick={() => {
+                                    if (activeState?.name === d.name) {
+                                      setActiveState(null);
+                                    } else {
+                                      setActiveState({ name: d.name, value: d.value, percent });
+                                    }
+                                  }}
                                 />
                               );
                             });
                           })()}
                         </svg>
+
+                        {/* Dynamic Center details HUD overlay */}
+                        <AnimatePresence>
+                          {activeState && (() => {
+                            const stateColors = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#06b6d4'];
+                            const activeIndex = stateChartData.findIndex(s => s.name === activeState.name);
+                            const badgeColor = activeIndex !== -1 ? stateColors[activeIndex % stateColors.length] : '#10b981';
+                            return (
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                                transition={{ duration: 0.2, ease: "easeOut" }}
+                                className="absolute flex flex-col items-center justify-center p-3 rounded-full bg-white/90 backdrop-blur-lg border border-[var(--border-glow)] w-28 h-28 shadow-[0_12px_32px_rgba(0,0,0,0.12)] pointer-events-none select-none"
+                              >
+                                <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-0.5">State Details</span>
+                                <span className="text-xs font-black text-[var(--text-primary)] truncate max-w-[90px] text-center" title={activeState.name}>
+                                  {activeState.name}
+                                </span>
+                                <span className="text-sm font-black mt-0.5" style={{ color: badgeColor }}>
+                                  {activeState.value} {activeState.value === 1 ? 'Lead' : 'Leads'}
+                                </span>
+                                <span className="text-[9px] font-bold text-[var(--text-secondary)] mt-0.5 bg-white/10 px-1.5 py-0.5 rounded-md border border-white/5 whitespace-nowrap">
+                                  {activeState.percent.toFixed(0)}% Share
+                                </span>
+                              </motion.div>
+                            );
+                          })()}
+                        </AnimatePresence>
                       </div>
 
                       {/* Futuristic Glassmorphic Grid of State detail cards */}
@@ -1076,12 +1249,28 @@ export default function LeadsDashboard() {
                           ];
                           return stateChartData.map((d, i) => {
                             const solidColor = stateColors[i % stateColors.length];
+                            const isActive = activeState?.name === d.name;
                             return (
                               <motion.div 
                                 key={d.name}
-                                whileHover={{ scale: 1.025, translateY: -2, boxShadow: '0 4px 15px rgba(0,0,0,0.04)' }}
-                                className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.01] border border-white/[0.03] hover:bg-white/[0.03] hover:border-white/5 transition-all duration-200"
+                                whileHover={{ scale: 1.025, translateY: -2 }}
+                                animate={{
+                                  scale: isActive ? 1.03 : 1,
+                                  boxShadow: isActive ? `0 4px 15px ${solidColor}20` : '0 0px 0px rgba(0,0,0,0)'
+                                }}
+                                className={`flex items-center justify-between p-3 rounded-2xl bg-white/[0.01] border transition-all duration-200 cursor-pointer ${
+                                  isActive ? 'border-white/10 bg-white/[0.04]' : 'border-white/[0.03] hover:bg-white/[0.03] hover:border-white/5'
+                                }`}
                                 style={{ borderLeft: `3px solid ${solidColor}` }}
+                                onMouseEnter={() => setActiveState({ name: d.name, value: d.value, percent: (d.value / totalStatesLeads) * 100 })}
+                                onMouseLeave={() => setActiveState(null)}
+                                onClick={() => {
+                                  if (activeState?.name === d.name) {
+                                    setActiveState(null);
+                                  } else {
+                                    setActiveState({ name: d.name, value: d.value, percent: (d.value / totalStatesLeads) * 100 });
+                                  }
+                                }}
                               >
                                 <div className="min-w-0 pr-1">
                                   <p style={{ color: 'var(--text-secondary)' }} className="text-[10px] font-black uppercase tracking-wider truncate">{d.name}</p>
