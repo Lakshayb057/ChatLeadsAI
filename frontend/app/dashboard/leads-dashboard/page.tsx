@@ -777,28 +777,28 @@ export default function LeadsDashboard() {
               {/* ── Visual Analytics Section (Charts dynamically reflect filtered subset) ── */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                {/* Donut Chart: Final Decision Mix */}
+                {/* Solid Pie Chart: Final Decision Mix */}
                 <div className="glass-card rounded-3xl p-6 md:p-8 flex flex-col justify-between shadow-md relative overflow-hidden group hover:border-[var(--purple-mid)]/30 transition-all duration-300">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl -z-10" />
-                  <div>
-                    <h3 className="text-lg md:text-xl font-black text-[var(--text-primary)]">Final Decision Mix</h3>
-                    <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mt-1">Lead status breakdown</p>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-lg md:text-xl font-black text-[var(--text-primary)]">Final Decision Mix</h3>
+                      <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mt-1">Lead status breakdown</p>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-xl text-[9px] font-black bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shadow-sm shrink-0 uppercase tracking-widest">
+                      {totalCount} Leads
+                    </span>
                   </div>
                   
-                  {/* Custom SVG Donut Chart */}
+                  {/* Custom SVG Solid Pie Chart */}
                   <div className="my-6 flex items-center justify-center relative">
-                    <svg className="w-48 h-48 -rotate-90">
-                      {/* Structural track ring */}
-                      <circle cx="50%" cy="50%" r="65" fill="transparent" stroke="rgba(0, 0, 0, 0.04)" strokeWidth="12" />
-                      {/* Glassmorphic center card ring */}
-                      <circle cx="50%" cy="50%" r="48" fill="rgba(255, 255, 255, 0.2)" stroke="var(--border-glow)" strokeWidth="1.5" />
-
+                    <svg viewBox="0 0 200 200" className="w-48 h-48 -rotate-90">
                       {(() => {
                         let currentOffset = 0;
-                        const gap = decisionChartData.length > 1 ? 5 : 0;
+                        const gap = decisionChartData.length > 1 ? 2.5 : 0;
                         return decisionChartData.map((d, i) => {
                           const percent = (d.value / totalCount) * 100;
-                          const dashArray = 2 * Math.PI * 65; 
+                          const dashArray = 2 * Math.PI * 50; 
                           const segmentLength = Math.max(2, (dashArray * percent) / 100 - gap);
                           const strokeOffset = currentOffset;
                           currentOffset += (dashArray * percent) / 100;
@@ -813,27 +813,21 @@ export default function LeadsDashboard() {
                           return (
                             <motion.circle
                               key={d.name}
-                              cx="50%" cy="50%" r="65"
+                              cx="100" cy="100" r="50"
                               fill="transparent"
                               stroke={strokeVal}
-                              strokeWidth="12"
+                              strokeWidth="100"
                               strokeDasharray={`${segmentLength} ${dashArray - segmentLength}`}
                               strokeDashoffset={-strokeOffset}
-                              strokeLinecap="round"
                               initial={{ strokeDasharray: `0 ${dashArray}` }}
                               animate={{ strokeDasharray: `${segmentLength} ${dashArray - segmentLength}` }}
                               transition={{ duration: 0.8, ease: "easeOut" }}
-                              className="cursor-pointer transition-all duration-300 hover:stroke-[15px]"
+                              className="cursor-pointer transition-all duration-300 hover:opacity-90"
                             />
                           );
                         });
                       })()}
                     </svg>
-                    
-                    <div className="absolute flex flex-col items-center justify-center p-4 rounded-full bg-white/60 backdrop-blur-md border border-[var(--border-glow)] w-24 h-24 shadow-sm">
-                      <span className="text-2xl font-black text-[var(--text-primary)] tracking-tight">{totalCount}</span>
-                      <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)] mt-0.5">Leads</span>
-                    </div>
                   </div>
 
                   {/* Legends */}
@@ -902,25 +896,25 @@ export default function LeadsDashboard() {
                   </div>
                 </div>
 
-                {/* Donut Chart: Card Status (Remarks Breakdown) */}
+                {/* Solid Pie Chart: Card Status (Remarks Breakdown) */}
                 <div className="glass-card rounded-3xl p-6 md:p-8 flex flex-col justify-between shadow-md relative overflow-hidden group hover:border-[var(--purple-mid)]/30 transition-all duration-300">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-3xl -z-10" />
-                  <div>
-                    <h3 className="text-lg md:text-xl font-black text-[var(--text-primary)]">Card Status</h3>
-                    <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mt-1">Lead remarks breakdown</p>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-lg md:text-xl font-black text-[var(--text-primary)]">Card Status</h3>
+                      <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mt-1">Lead remarks breakdown</p>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-xl text-[9px] font-black bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-sm shrink-0 uppercase tracking-widest">
+                      {totalCount} Leads
+                    </span>
                   </div>
                   
-                  {/* Custom SVG Donut Chart */}
+                  {/* Custom SVG Solid Pie Chart */}
                   <div className="my-6 flex items-center justify-center relative">
-                    <svg className="w-48 h-48 -rotate-90">
-                      {/* Structural track ring */}
-                      <circle cx="50%" cy="50%" r="65" fill="transparent" stroke="rgba(0, 0, 0, 0.04)" strokeWidth="12" />
-                      {/* Glassmorphic center card ring */}
-                      <circle cx="50%" cy="50%" r="48" fill="rgba(255, 255, 255, 0.2)" stroke="var(--border-glow)" strokeWidth="1.5" />
-
+                    <svg viewBox="0 0 200 200" className="w-48 h-48 -rotate-90">
                       {(() => {
                         let currentOffset = 0;
-                        const gap = remarksChartData.length > 1 ? 5 : 0;
+                        const gap = remarksChartData.length > 1 ? 2.5 : 0;
                         const remarksColors = [
                           '#8b5cf6', // Vibrant Violet
                           '#ec4899', // Vibrant Deep Pink
@@ -933,7 +927,7 @@ export default function LeadsDashboard() {
 
                         return remarksChartData.map((d, i) => {
                           const percent = (d.value / totalCount) * 100;
-                          const dashArray = 2 * Math.PI * 65; 
+                          const dashArray = 2 * Math.PI * 50; 
                           const segmentLength = Math.max(2, (dashArray * percent) / 100 - gap);
                           const strokeOffset = currentOffset;
                           currentOffset += (dashArray * percent) / 100;
@@ -943,27 +937,21 @@ export default function LeadsDashboard() {
                           return (
                             <motion.circle
                               key={d.name}
-                              cx="50%" cy="50%" r="65"
+                              cx="100" cy="100" r="50"
                               fill="transparent"
                               stroke={strokeVal}
-                              strokeWidth="12"
+                              strokeWidth="100"
                               strokeDasharray={`${segmentLength} ${dashArray - segmentLength}`}
                               strokeDashoffset={-strokeOffset}
-                              strokeLinecap="round"
                               initial={{ strokeDasharray: `0 ${dashArray}` }}
                               animate={{ strokeDasharray: `${segmentLength} ${dashArray - segmentLength}` }}
                               transition={{ duration: 0.8, ease: "easeOut" }}
-                              className="cursor-pointer transition-all duration-300 hover:stroke-[15px]"
+                              className="cursor-pointer transition-all duration-300 hover:opacity-90"
                             />
                           );
                         });
                       })()}
                     </svg>
-                    
-                    <div className="absolute flex flex-col items-center justify-center p-4 rounded-full bg-white/60 backdrop-blur-md border border-[var(--border-glow)] w-24 h-24 shadow-sm">
-                      <span className="text-2xl font-black text-[var(--text-primary)] tracking-tight">{totalCount}</span>
-                      <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)] mt-0.5">Leads</span>
-                    </div>
                   </div>
 
                   {/* Legends */}
@@ -999,16 +987,21 @@ export default function LeadsDashboard() {
               {/* ── Sub Charts Row ── */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
-                {/* State Distribution Pie/Donut Chart */}
+                {/* Solid Pie Chart: Geographic Mix */}
                 <div className="glass-card rounded-3xl p-6 md:p-8 flex flex-col h-full justify-start shadow-md relative overflow-hidden group hover:border-[var(--purple-mid)]/30 transition-all duration-300">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -z-10" />
                   
                   {/* Ambient Glow Backdrop behind the chart */}
                   <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl opacity-60 pointer-events-none -z-10 group-hover:scale-110 transition-transform duration-700" />
                   
-                  <div>
-                    <h3 className="text-lg md:text-xl font-black text-[var(--text-primary)]">Geographic Mix</h3>
-                    <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mt-1">Statewise leads counts</p>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-lg md:text-xl font-black text-[var(--text-primary)]">Geographic Mix</h3>
+                      <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mt-1">Statewise leads counts</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 shadow-sm text-emerald-400 font-black text-xs shrink-0">
+                      <MapPin size={12} className="animate-bounce" /> {stateChartData.reduce((acc, curr) => acc + curr.value, 0)} Leads
+                    </div>
                   </div>
 
                   {stateChartData.length === 0 ? (
@@ -1020,22 +1013,16 @@ export default function LeadsDashboard() {
                       
                       {/* 3D Telemetry SVG Container */}
                       <div className="relative flex items-center justify-center shrink-0 mb-6">
-                        <svg className="w-56 h-56 -rotate-90 overflow-visible">
+                        <svg viewBox="0 0 200 200" className="w-56 h-56 -rotate-90 overflow-visible">
                           {/* Futuristic Orbiting HUD Rings */}
-                          <circle cx="50%" cy="50%" r="92" fill="transparent" stroke="rgba(99, 102, 241, 0.15)" strokeWidth="1.5" strokeDasharray="6 8" className="animate-spin" style={{ transformOrigin: 'center', animationDuration: '35s' }} />
-                          <circle cx="50%" cy="50%" r="92" fill="transparent" stroke="rgba(16, 185, 129, 0.08)" strokeWidth="1" strokeDasharray="40 5 10 5" className="animate-spin" style={{ transformOrigin: 'center', animationDuration: '60s' }} />
-                          <circle cx="50%" cy="50%" r="66" fill="transparent" stroke="rgba(16, 185, 129, 0.1)" strokeWidth="1" strokeDasharray="4 6" className="animate-spin" style={{ transformOrigin: 'center', animationDuration: '20s', animationDirection: 'reverse' }} />
+                          <circle cx="100" cy="100" r="92" fill="transparent" stroke="rgba(99, 102, 241, 0.15)" strokeWidth="1.5" strokeDasharray="6 8" className="animate-spin" style={{ transformOrigin: 'center', animationDuration: '35s' }} />
+                          <circle cx="100" cy="100" r="92" fill="transparent" stroke="rgba(16, 185, 129, 0.08)" strokeWidth="1" strokeDasharray="40 5 10 5" className="animate-spin" style={{ transformOrigin: 'center', animationDuration: '60s' }} />
+                          <circle cx="100" cy="100" r="66" fill="transparent" stroke="rgba(16, 185, 129, 0.1)" strokeWidth="1" strokeDasharray="4 6" className="animate-spin" style={{ transformOrigin: 'center', animationDuration: '20s', animationDirection: 'reverse' }} />
 
-                          {/* Outer track ring */}
-                          <circle cx="50%" cy="50%" r="78" fill="transparent" stroke="rgba(0, 0, 0, 0.04)" strokeWidth="16" />
-                          
-                          {/* Inner glassmorphic ring */}
-                          <circle cx="50%" cy="50%" r="60" fill="rgba(255, 255, 255, 0.2)" stroke="var(--border-glow)" strokeWidth="1.5" />
-                          
                           {(() => {
                             let currentOffset = 0;
                             const totalStatesLeads = stateChartData.reduce((acc, curr) => acc + curr.value, 0);
-                            const gap = stateChartData.length > 1 ? 4 : 0;
+                            const gap = stateChartData.length > 1 ? 2.5 : 0;
                             const stateColors = [
                               '#10b981', // Delhi / Emerald Green
                               '#3b82f6', // Odisha / Royal Blue
@@ -1047,7 +1034,7 @@ export default function LeadsDashboard() {
 
                             return stateChartData.map((d, i) => {
                               const percent = (d.value / totalStatesLeads) * 100;
-                              const dashArray = 2 * Math.PI * 78;
+                              const dashArray = 2 * Math.PI * 50;
                               const segmentLength = Math.max(2, (dashArray * percent) / 100 - gap);
                               const strokeOffset = currentOffset;
                               currentOffset += (dashArray * percent) / 100;
@@ -1057,32 +1044,22 @@ export default function LeadsDashboard() {
                               return (
                                 <motion.circle
                                   key={d.name}
-                                  cx="50%" cy="50%" r="78"
+                                  cx="100" cy="100" r="50"
                                   fill="transparent"
                                   stroke={strokeVal}
-                                  strokeWidth="16"
+                                  strokeWidth="100"
                                   strokeDasharray={`${segmentLength} ${dashArray - segmentLength}`}
                                   strokeDashoffset={-strokeOffset}
-                                  strokeLinecap="round"
                                   initial={{ strokeDasharray: `0 ${dashArray}` }}
                                   animate={{ strokeDasharray: `${segmentLength} ${dashArray - segmentLength}` }}
                                   transition={{ duration: 0.8, ease: "easeOut" }}
-                                  className="cursor-pointer transition-all duration-300 hover:stroke-[22px]"
+                                  className="cursor-pointer transition-all duration-300 hover:opacity-90"
                                   style={{ filter: `drop-shadow(0 0 6px ${strokeVal}40)` }}
                                 />
                               );
                             });
                           })()}
                         </svg>
-                        
-                        {/* Core Glassmorphic Metric Display */}
-                        <div className="absolute flex flex-col items-center justify-center p-4 rounded-full bg-white/60 backdrop-blur-md border border-[var(--border-glow)] w-26 h-26 shadow-[0_8px_32px_rgba(31,38,135,0.07)]">
-                          <MapPin size={18} className="text-emerald-500 mb-0.5 animate-bounce" style={{ animationDuration: '3s' }} />
-                          <span className="text-2xl font-black text-[var(--text-primary)] tracking-tight">
-                            {stateChartData.reduce((acc, curr) => acc + curr.value, 0)}
-                          </span>
-                          <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)]">Leads</span>
-                        </div>
                       </div>
 
                       {/* Futuristic Glassmorphic Grid of State detail cards */}
