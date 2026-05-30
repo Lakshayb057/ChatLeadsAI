@@ -682,7 +682,8 @@ export default function LeadsDashboard() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* Donut Chart: Final Decision Mix */}
-                <div className="glass-card rounded-3xl p-6 md:p-8 flex flex-col justify-between shadow-md">
+                <div className="glass-card rounded-3xl p-6 md:p-8 flex flex-col justify-between shadow-md relative overflow-hidden group hover:border-[var(--purple-mid)]/30 transition-all duration-300">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-3xl -z-10" />
                   <div>
                     <h3 className="text-lg md:text-xl font-black text-[var(--text-primary)]">Final Decision Mix</h3>
                     <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mt-1">Lead status breakdown</p>
@@ -690,52 +691,99 @@ export default function LeadsDashboard() {
                   
                   {/* Custom SVG Donut Chart */}
                   <div className="my-6 flex items-center justify-center relative">
-                    <svg className="w-48 h-48 -rotate-90">
+                    <svg className="w-48 h-48 -rotate-90 filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.2)]">
+                      <defs>
+                        {/* Glow Filter */}
+                        <filter id="donutGlow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="3" result="blur" />
+                          <feMerge>
+                            <feMergeNode in="blur" />
+                            <feMergeNode in="SourceGraphic" />
+                          </feMerge>
+                        </filter>
+                        {/* Linear Gradients */}
+                        <linearGradient id="decisionGradApprove" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#3b82f6" />
+                          <stop offset="100%" stopColor="#60a5fa" />
+                        </linearGradient>
+                        <linearGradient id="decisionGradInprocess" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#10b981" />
+                          <stop offset="100%" stopColor="#34d399" />
+                        </linearGradient>
+                        <linearGradient id="decisionGradDecline" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#f59e0b" />
+                          <stop offset="100%" stopColor="#f43f5e" />
+                        </linearGradient>
+                      </defs>
+
+                      {/* Structural track ring */}
+                      <circle cx="50%" cy="50%" r="65" fill="transparent" stroke="rgba(255,255,255,0.03)" strokeWidth="12" />
+                      {/* Glassmorphic center card ring */}
+                      <circle cx="50%" cy="50%" r="48" fill="rgba(255,255,255,0.01)" stroke="rgba(255,255,255,0.05)" strokeWidth="1.5" />
+
                       {(() => {
                         let currentOffset = 0;
+                        const gap = decisionChartData.length > 1 ? 5 : 0;
                         return decisionChartData.map((d, i) => {
                           const percent = (d.value / totalCount) * 100;
                           const dashArray = 2 * Math.PI * 65; 
-                          const segmentLength = (dashArray * percent) / 100;
+                          const segmentLength = Math.max(2, (dashArray * percent) / 100 - gap);
                           const strokeOffset = currentOffset;
-                          currentOffset += segmentLength;
+                          currentOffset += (dashArray * percent) / 100;
+
+                          const clean = d.name.toLowerCase();
+                          const strokeVal = clean.includes('approve') || clean === 'yes' 
+                            ? 'url(#decisionGradApprove)' 
+                            : clean.includes('decline') || clean === 'no' 
+                            ? 'url(#decisionGradDecline)' 
+                            : 'url(#decisionGradInprocess)';
 
                           return (
                             <motion.circle
                               key={d.name}
                               cx="50%" cy="50%" r="65"
                               fill="transparent"
-                              stroke={sliceColors[i % sliceColors.length]}
-                              strokeWidth="16"
+                              stroke={strokeVal}
+                              strokeWidth="12"
                               strokeDasharray={`${segmentLength} ${dashArray - segmentLength}`}
                               strokeDashoffset={-strokeOffset}
                               strokeLinecap="round"
                               initial={{ strokeDasharray: `0 ${dashArray}` }}
                               animate={{ strokeDasharray: `${segmentLength} ${dashArray - segmentLength}` }}
                               transition={{ duration: 0.8, ease: "easeOut" }}
-                              className="cursor-pointer hover:stroke-[20px] transition-all"
+                              className="cursor-pointer transition-all duration-300 hover:stroke-[15px]"
+                              style={{ filter: 'url(#donutGlow)' }}
                             />
                           );
                         });
                       })()}
                     </svg>
-                    <div className="absolute flex flex-col items-center justify-center">
-                      <span className="text-2xl font-black text-[var(--text-primary)]">{totalCount}</span>
-                      <span className="text-[8px] font-black uppercase tracking-wider text-[var(--text-muted)]">Filtered</span>
+                    
+                    <div className="absolute flex flex-col items-center justify-center p-4 rounded-full bg-black/10 backdrop-blur-sm border border-white/5 w-24 h-24 shadow-inner">
+                      <span className="text-2xl font-black text-[var(--text-primary)] tracking-tight">{totalCount}</span>
+                      <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)] mt-0.5">Leads</span>
                     </div>
                   </div>
 
                   {/* Legends */}
-                  <div className="space-y-1.5 pt-2">
-                    {decisionChartData.map((d, i) => (
-                      <div key={d.name} className="flex justify-between items-center text-xs font-bold">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: sliceColors[i % sliceColors.length] }} />
-                          <span style={{ color: 'var(--text-secondary)' }} className="truncate max-w-[150px]">{d.name}</span>
+                  <div className="space-y-2 pt-2 border-t border-white/5">
+                    {decisionChartData.map((d, i) => {
+                      const clean = d.name.toLowerCase();
+                      const legendGradient = clean.includes('approve') || clean === 'yes'
+                        ? 'from-blue-500 to-sky-400'
+                        : clean.includes('decline') || clean === 'no'
+                        ? 'from-amber-500 to-rose-500'
+                        : 'from-emerald-500 to-teal-400';
+                      return (
+                        <div key={d.name} className="flex justify-between items-center text-xs font-bold px-1.5 py-1 rounded-xl hover:bg-white/[0.02] transition-colors">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className={`w-3 h-3 rounded-md bg-gradient-to-br ${legendGradient} shadow-md`} />
+                            <span style={{ color: 'var(--text-secondary)' }} className="truncate max-w-[150px]">{d.name}</span>
+                          </div>
+                          <span className="font-black text-[var(--text-primary)]">{d.value} ({((d.value/totalCount)*100).toFixed(0)}%)</span>
                         </div>
-                        <span className="font-black text-[var(--text-primary)]">{d.value} ({((d.value/totalCount)*100).toFixed(0)}%)</span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -784,7 +832,8 @@ export default function LeadsDashboard() {
                 </div>
 
                 {/* Donut Chart: Card Status (Remarks Breakdown) */}
-                <div className="glass-card rounded-3xl p-6 md:p-8 flex flex-col justify-between shadow-md">
+                <div className="glass-card rounded-3xl p-6 md:p-8 flex flex-col justify-between shadow-md relative overflow-hidden group hover:border-[var(--purple-mid)]/30 transition-all duration-300">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-3xl -z-10" />
                   <div>
                     <h3 className="text-lg md:text-xl font-black text-[var(--text-primary)]">Card Status</h3>
                     <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mt-1">Lead remarks breakdown</p>
@@ -792,55 +841,107 @@ export default function LeadsDashboard() {
                   
                   {/* Custom SVG Donut Chart */}
                   <div className="my-6 flex items-center justify-center relative">
-                    <svg className="w-48 h-48 -rotate-90">
+                    <svg className="w-48 h-48 -rotate-90 filter drop-shadow-[0_8px_16px_rgba(0,0,0,0.2)]">
+                      <defs>
+                        {/* Glow Filter */}
+                        <filter id="remarksGlow" x="-20%" y="-20%" width="140%" height="140%">
+                          <feGaussianBlur stdDeviation="3" result="blur" />
+                          <feMerge>
+                            <feMergeNode in="blur" />
+                            <feMergeNode in="SourceGraphic" />
+                          </feMerge>
+                        </filter>
+                        {/* Linear Gradients */}
+                        <linearGradient id="remarksGrad0" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#a855f7" />
+                          <stop offset="100%" stopColor="#c084fc" />
+                        </linearGradient>
+                        <linearGradient id="remarksGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#ec4899" />
+                          <stop offset="100%" stopColor="#f43f5e" />
+                        </linearGradient>
+                        <linearGradient id="remarksGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#3b82f6" />
+                          <stop offset="100%" stopColor="#60a5fa" />
+                        </linearGradient>
+                        <linearGradient id="remarksGrad3" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#14b8a6" />
+                          <stop offset="100%" stopColor="#2dd4bf" />
+                        </linearGradient>
+                        <linearGradient id="remarksGrad4" x1="0%" y1="0%" x2="100%" y2="100%">
+                          <stop offset="0%" stopColor="#f59e0b" />
+                          <stop offset="100%" stopColor="#fb923c" />
+                        </linearGradient>
+                      </defs>
+
+                      {/* Structural track ring */}
+                      <circle cx="50%" cy="50%" r="65" fill="transparent" stroke="rgba(255,255,255,0.03)" strokeWidth="12" />
+                      {/* Glassmorphic center card ring */}
+                      <circle cx="50%" cy="50%" r="48" fill="rgba(255,255,255,0.01)" stroke="rgba(255,255,255,0.05)" strokeWidth="1.5" />
+
                       {(() => {
                         let currentOffset = 0;
+                        const gap = remarksChartData.length > 1 ? 5 : 0;
                         return remarksChartData.map((d, i) => {
                           const percent = (d.value / totalCount) * 100;
                           const dashArray = 2 * Math.PI * 65; 
-                          const segmentLength = (dashArray * percent) / 100;
+                          const segmentLength = Math.max(2, (dashArray * percent) / 100 - gap);
                           const strokeOffset = currentOffset;
-                          currentOffset += segmentLength;
+                          currentOffset += (dashArray * percent) / 100;
+
+                          const strokeVal = `url(#remarksGrad${i % 5})`;
 
                           return (
                             <motion.circle
                               key={d.name}
                               cx="50%" cy="50%" r="65"
                               fill="transparent"
-                              stroke={sliceColors[(i + 3) % sliceColors.length]}
-                              strokeWidth="16"
+                              stroke={strokeVal}
+                              strokeWidth="12"
                               strokeDasharray={`${segmentLength} ${dashArray - segmentLength}`}
                               strokeDashoffset={-strokeOffset}
                               strokeLinecap="round"
                               initial={{ strokeDasharray: `0 ${dashArray}` }}
                               animate={{ strokeDasharray: `${segmentLength} ${dashArray - segmentLength}` }}
                               transition={{ duration: 0.8, ease: "easeOut" }}
-                              className="cursor-pointer hover:stroke-[20px] transition-all"
+                              className="cursor-pointer transition-all duration-300 hover:stroke-[15px]"
+                              style={{ filter: 'url(#remarksGlow)' }}
                             />
                           );
                         });
                       })()}
                     </svg>
-                    <div className="absolute flex flex-col items-center justify-center">
-                      <span className="text-2xl font-black text-[var(--text-primary)]">{totalCount}</span>
-                      <span className="text-[8px] font-black uppercase tracking-wider text-[var(--text-muted)]">Filtered</span>
+                    
+                    <div className="absolute flex flex-col items-center justify-center p-4 rounded-full bg-black/10 backdrop-blur-sm border border-white/5 w-24 h-24 shadow-inner">
+                      <span className="text-2xl font-black text-[var(--text-primary)] tracking-tight">{totalCount}</span>
+                      <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)] mt-0.5">Leads</span>
                     </div>
                   </div>
 
                   {/* Legends */}
-                  <div className="space-y-1.5 pt-2">
+                  <div className="space-y-2 pt-2 border-t border-white/5">
                     {remarksChartData.length === 0 ? (
                       <p className="text-center italic text-xs font-bold py-4" style={{ color: 'var(--text-ghost)' }}>No remarks data</p>
                     ) : (
-                      remarksChartData.map((d, i) => (
-                        <div key={d.name} className="flex justify-between items-center text-xs font-bold">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: sliceColors[(i + 3) % sliceColors.length] }} />
-                            <span style={{ color: 'var(--text-secondary)' }} className="truncate max-w-[150px]">{d.name}</span>
+                      remarksChartData.map((d, i) => {
+                        const legendGradients = [
+                          'from-purple-500 to-fuchsia-400',
+                          'from-pink-500 to-rose-400',
+                          'from-blue-500 to-sky-400',
+                          'from-teal-500 to-cyan-400',
+                          'from-amber-500 to-orange-400'
+                        ];
+                        const grad = legendGradients[i % legendGradients.length];
+                        return (
+                          <div key={d.name} className="flex justify-between items-center text-xs font-bold px-1.5 py-1 rounded-xl hover:bg-white/[0.02] transition-colors">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className={`w-3 h-3 rounded-md bg-gradient-to-br ${grad} shadow-md shrink-0`} />
+                              <span style={{ color: 'var(--text-secondary)' }} className="truncate max-w-[150px]">{d.name}</span>
+                            </div>
+                            <span className="font-black text-[var(--text-primary)] shrink-0">{d.value} ({((d.value/totalCount)*100).toFixed(0)}%)</span>
                           </div>
-                          <span className="font-black text-[var(--text-primary)] shrink-0">{d.value} ({((d.value/totalCount)*100).toFixed(0)}%)</span>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>
