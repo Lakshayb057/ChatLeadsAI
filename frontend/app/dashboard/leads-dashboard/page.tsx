@@ -1000,26 +1000,38 @@ export default function LeadsDashboard() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
                 {/* State Distribution Pie/Donut Chart */}
-                <div className="glass-card rounded-3xl p-6 md:p-8 flex flex-col justify-between shadow-md relative overflow-hidden group hover:border-[var(--purple-mid)]/30 transition-all duration-300">
+                <div className="glass-card rounded-3xl p-6 md:p-8 flex flex-col h-full justify-start shadow-md relative overflow-hidden group hover:border-[var(--purple-mid)]/30 transition-all duration-300">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -z-10" />
+                  
+                  {/* Ambient Glow Backdrop behind the chart */}
+                  <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl opacity-60 pointer-events-none -z-10 group-hover:scale-110 transition-transform duration-700" />
+                  
                   <div>
                     <h3 className="text-lg md:text-xl font-black text-[var(--text-primary)]">Geographic Mix</h3>
                     <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mt-1">Statewise leads counts</p>
                   </div>
 
                   {stateChartData.length === 0 ? (
-                    <div className="my-10 text-center italic text-xs font-bold" style={{ color: 'var(--text-ghost)' }}>
+                    <div className="flex-1 flex items-center justify-center py-20 italic text-xs font-bold" style={{ color: 'var(--text-ghost)' }}>
                       No geographic tags found.
                     </div>
                   ) : (
-                    <div className="my-6 flex flex-col sm:flex-row items-center justify-around gap-8">
-                      {/* Big SVG Pie/Donut Chart */}
-                      <div className="relative flex items-center justify-center shrink-0">
-                        <svg className="w-56 h-56 -rotate-90">
+                    <div className="flex-1 flex flex-col items-center justify-center mt-6">
+                      
+                      {/* 3D Telemetry SVG Container */}
+                      <div className="relative flex items-center justify-center shrink-0 mb-6">
+                        <svg className="w-56 h-56 -rotate-90 overflow-visible">
+                          {/* Futuristic Orbiting HUD Rings */}
+                          <circle cx="50%" cy="50%" r="92" fill="transparent" stroke="rgba(99, 102, 241, 0.15)" strokeWidth="1.5" strokeDasharray="6 8" className="animate-spin" style={{ transformOrigin: 'center', animationDuration: '35s' }} />
+                          <circle cx="50%" cy="50%" r="92" fill="transparent" stroke="rgba(16, 185, 129, 0.08)" strokeWidth="1" strokeDasharray="40 5 10 5" className="animate-spin" style={{ transformOrigin: 'center', animationDuration: '60s' }} />
+                          <circle cx="50%" cy="50%" r="66" fill="transparent" stroke="rgba(16, 185, 129, 0.1)" strokeWidth="1" strokeDasharray="4 6" className="animate-spin" style={{ transformOrigin: 'center', animationDuration: '20s', animationDirection: 'reverse' }} />
+
                           {/* Outer track ring */}
-                          <circle cx="50%" cy="50%" r="80" fill="transparent" stroke="rgba(0, 0, 0, 0.04)" strokeWidth="16" />
+                          <circle cx="50%" cy="50%" r="78" fill="transparent" stroke="rgba(0, 0, 0, 0.04)" strokeWidth="16" />
+                          
                           {/* Inner glassmorphic ring */}
-                          <circle cx="50%" cy="50%" r="62" fill="rgba(255, 255, 255, 0.2)" stroke="var(--border-glow)" strokeWidth="1.5" />
+                          <circle cx="50%" cy="50%" r="60" fill="rgba(255, 255, 255, 0.2)" stroke="var(--border-glow)" strokeWidth="1.5" />
+                          
                           {(() => {
                             let currentOffset = 0;
                             const totalStatesLeads = stateChartData.reduce((acc, curr) => acc + curr.value, 0);
@@ -1035,7 +1047,7 @@ export default function LeadsDashboard() {
 
                             return stateChartData.map((d, i) => {
                               const percent = (d.value / totalStatesLeads) * 100;
-                              const dashArray = 2 * Math.PI * 80;
+                              const dashArray = 2 * Math.PI * 78;
                               const segmentLength = Math.max(2, (dashArray * percent) / 100 - gap);
                               const strokeOffset = currentOffset;
                               currentOffset += (dashArray * percent) / 100;
@@ -1045,7 +1057,7 @@ export default function LeadsDashboard() {
                               return (
                                 <motion.circle
                                   key={d.name}
-                                  cx="50%" cy="50%" r="80"
+                                  cx="50%" cy="50%" r="78"
                                   fill="transparent"
                                   stroke={strokeVal}
                                   strokeWidth="16"
@@ -1055,14 +1067,17 @@ export default function LeadsDashboard() {
                                   initial={{ strokeDasharray: `0 ${dashArray}` }}
                                   animate={{ strokeDasharray: `${segmentLength} ${dashArray - segmentLength}` }}
                                   transition={{ duration: 0.8, ease: "easeOut" }}
-                                  className="cursor-pointer transition-all duration-300 hover:stroke-[20px]"
+                                  className="cursor-pointer transition-all duration-300 hover:stroke-[22px]"
+                                  style={{ filter: `drop-shadow(0 0 6px ${strokeVal}40)` }}
                                 />
                               );
                             });
                           })()}
                         </svg>
-                        <div className="absolute flex flex-col items-center justify-center p-4 rounded-full bg-white/60 backdrop-blur-md border border-[var(--border-glow)] w-28 h-28 shadow-sm">
-                          <MapPin size={18} className="text-emerald-500 mb-1" />
+                        
+                        {/* Core Glassmorphic Metric Display */}
+                        <div className="absolute flex flex-col items-center justify-center p-4 rounded-full bg-white/60 backdrop-blur-md border border-[var(--border-glow)] w-26 h-26 shadow-[0_8px_32px_rgba(31,38,135,0.07)]">
+                          <MapPin size={18} className="text-emerald-500 mb-0.5 animate-bounce" style={{ animationDuration: '3s' }} />
                           <span className="text-2xl font-black text-[var(--text-primary)] tracking-tight">
                             {stateChartData.reduce((acc, curr) => acc + curr.value, 0)}
                           </span>
@@ -1070,8 +1085,8 @@ export default function LeadsDashboard() {
                         </div>
                       </div>
 
-                      {/* Interactive Legend List */}
-                      <div className="flex-1 w-full space-y-2.5">
+                      {/* Futuristic Glassmorphic Grid of State detail cards */}
+                      <div className="w-full grid grid-cols-2 gap-3 mt-2">
                         {(() => {
                           const totalStatesLeads = stateChartData.reduce((acc, curr) => acc + curr.value, 0);
                           const stateColors = [
@@ -1085,19 +1100,29 @@ export default function LeadsDashboard() {
                           return stateChartData.map((d, i) => {
                             const solidColor = stateColors[i % stateColors.length];
                             return (
-                              <div key={d.name} className="flex justify-between items-center text-xs font-bold px-3 py-2 rounded-2xl bg-white/[0.01] border border-white/[0.03] hover:bg-white/[0.03] hover:border-white/5 transition-all duration-200">
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                  <div className="w-3.5 h-3.5 rounded-lg shadow-sm shrink-0" style={{ backgroundColor: solidColor }} />
-                                  <span style={{ color: 'var(--text-secondary)' }} className="truncate font-black">{d.name}</span>
+                              <motion.div 
+                                key={d.name}
+                                whileHover={{ scale: 1.025, translateY: -2, boxShadow: '0 4px 15px rgba(0,0,0,0.04)' }}
+                                className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.01] border border-white/[0.03] hover:bg-white/[0.03] hover:border-white/5 transition-all duration-200"
+                                style={{ borderLeft: `3px solid ${solidColor}` }}
+                              >
+                                <div className="min-w-0 pr-1">
+                                  <p style={{ color: 'var(--text-secondary)' }} className="text-[10px] font-black uppercase tracking-wider truncate">{d.name}</p>
+                                  <span className="text-[8px] font-black text-[var(--text-muted)]">
+                                    {((d.value / totalStatesLeads) * 100).toFixed(0)}% SHARE
+                                  </span>
                                 </div>
-                                <span className="font-black text-[var(--text-primary)] shrink-0 bg-white/5 px-2 py-0.5 rounded-lg border border-white/5">
-                                  {d.value} ({((d.value / totalStatesLeads) * 100).toFixed(0)}%)
-                                </span>
-                              </div>
+                                <div className="text-right shrink-0">
+                                  <span className="text-xs font-black text-[var(--text-primary)] px-2 py-0.5 rounded-lg bg-white/5 border border-white/5">
+                                    {d.value}
+                                  </span>
+                                </div>
+                              </motion.div>
                             );
                           });
                         })()}
                       </div>
+
                     </div>
                   )}
                 </div>
