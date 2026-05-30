@@ -999,42 +999,107 @@ export default function LeadsDashboard() {
               {/* ── Sub Charts Row ── */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
-                {/* State Distribution Bar Chart */}
-                <div className="glass-card rounded-3xl p-6 md:p-8 flex flex-col justify-between shadow-md">
+                {/* State Distribution Pie/Donut Chart */}
+                <div className="glass-card rounded-3xl p-6 md:p-8 flex flex-col justify-between shadow-md relative overflow-hidden group hover:border-[var(--purple-mid)]/30 transition-all duration-300">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -z-10" />
                   <div>
                     <h3 className="text-lg md:text-xl font-black text-[var(--text-primary)]">Geographic Mix</h3>
                     <p className="text-[10px] md:text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] mt-1">Statewise leads counts</p>
                   </div>
 
-                  <div className="my-6 space-y-4">
-                    {stateChartData.length === 0 ? (
-                      <p className="text-center italic text-xs font-bold py-10" style={{ color: 'var(--text-ghost)' }}>No geographic tags found.</p>
-                    ) : (
-                      stateChartData.map((st, i) => {
-                        const maxVal = Math.max(...stateChartData.map(s => s.value));
-                        const percent = maxVal > 0 ? (st.value / maxVal) * 100 : 0;
-                        return (
-                          <div key={st.name} className="space-y-1">
-                            <div className="flex justify-between text-xs font-bold">
-                              <span style={{ color: 'var(--text-secondary)' }} className="flex items-center gap-1.5">
-                                <MapPin size={10} className="text-indigo-400" /> {st.name}
-                              </span>
-                              <span className="font-black text-[var(--text-primary)]">{st.value}</span>
-                            </div>
-                            <div className="w-full h-3 rounded-full overflow-hidden" style={{ background: 'rgba(37,99,235,0.06)' }}>
-                              <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: `${percent}%` }}
-                                transition={{ duration: 0.8, ease: "easeOut" }}
-                                className="h-full rounded-full"
-                                style={{ background: 'linear-gradient(90deg, #10b981, #059669)' }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
+                  {stateChartData.length === 0 ? (
+                    <div className="my-10 text-center italic text-xs font-bold" style={{ color: 'var(--text-ghost)' }}>
+                      No geographic tags found.
+                    </div>
+                  ) : (
+                    <div className="my-6 flex flex-col sm:flex-row items-center justify-around gap-8">
+                      {/* Big SVG Pie/Donut Chart */}
+                      <div className="relative flex items-center justify-center shrink-0">
+                        <svg className="w-56 h-56 -rotate-90">
+                          {/* Outer track ring */}
+                          <circle cx="50%" cy="50%" r="80" fill="transparent" stroke="rgba(0, 0, 0, 0.04)" strokeWidth="16" />
+                          {/* Inner glassmorphic ring */}
+                          <circle cx="50%" cy="50%" r="62" fill="rgba(255, 255, 255, 0.2)" stroke="var(--border-glow)" strokeWidth="1.5" />
+                          {(() => {
+                            let currentOffset = 0;
+                            const totalStatesLeads = stateChartData.reduce((acc, curr) => acc + curr.value, 0);
+                            const gap = stateChartData.length > 1 ? 4 : 0;
+                            const stateColors = [
+                              '#10b981', // Delhi / Emerald Green
+                              '#3b82f6', // Odisha / Royal Blue
+                              '#8b5cf6', // Uttar Pradesh / Violet
+                              '#f59e0b', // Haryana / Amber Orange
+                              '#ec4899', // Pink
+                              '#06b6d4', // Cyan
+                            ];
+
+                            return stateChartData.map((d, i) => {
+                              const percent = (d.value / totalStatesLeads) * 100;
+                              const dashArray = 2 * Math.PI * 80;
+                              const segmentLength = Math.max(2, (dashArray * percent) / 100 - gap);
+                              const strokeOffset = currentOffset;
+                              currentOffset += (dashArray * percent) / 100;
+
+                              const strokeVal = stateColors[i % stateColors.length];
+
+                              return (
+                                <motion.circle
+                                  key={d.name}
+                                  cx="50%" cy="50%" r="80"
+                                  fill="transparent"
+                                  stroke={strokeVal}
+                                  strokeWidth="16"
+                                  strokeDasharray={`${segmentLength} ${dashArray - segmentLength}`}
+                                  strokeDashoffset={-strokeOffset}
+                                  strokeLinecap="round"
+                                  initial={{ strokeDasharray: `0 ${dashArray}` }}
+                                  animate={{ strokeDasharray: `${segmentLength} ${dashArray - segmentLength}` }}
+                                  transition={{ duration: 0.8, ease: "easeOut" }}
+                                  className="cursor-pointer transition-all duration-300 hover:stroke-[20px]"
+                                />
+                              );
+                            });
+                          })()}
+                        </svg>
+                        <div className="absolute flex flex-col items-center justify-center p-4 rounded-full bg-white/60 backdrop-blur-md border border-[var(--border-glow)] w-28 h-28 shadow-sm">
+                          <MapPin size={18} className="text-emerald-500 mb-1" />
+                          <span className="text-2xl font-black text-[var(--text-primary)] tracking-tight">
+                            {stateChartData.reduce((acc, curr) => acc + curr.value, 0)}
+                          </span>
+                          <span className="text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)]">Leads</span>
+                        </div>
+                      </div>
+
+                      {/* Interactive Legend List */}
+                      <div className="flex-1 w-full space-y-2.5">
+                        {(() => {
+                          const totalStatesLeads = stateChartData.reduce((acc, curr) => acc + curr.value, 0);
+                          const stateColors = [
+                            '#10b981',
+                            '#3b82f6',
+                            '#8b5cf6',
+                            '#f59e0b',
+                            '#ec4899',
+                            '#06b6d4',
+                          ];
+                          return stateChartData.map((d, i) => {
+                            const solidColor = stateColors[i % stateColors.length];
+                            return (
+                              <div key={d.name} className="flex justify-between items-center text-xs font-bold px-3 py-2 rounded-2xl bg-white/[0.01] border border-white/[0.03] hover:bg-white/[0.03] hover:border-white/5 transition-all duration-200">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className="w-3.5 h-3.5 rounded-lg shadow-sm shrink-0" style={{ backgroundColor: solidColor }} />
+                                  <span style={{ color: 'var(--text-secondary)' }} className="truncate font-black">{d.name}</span>
+                                </div>
+                                <span className="font-black text-[var(--text-primary)] shrink-0 bg-white/5 px-2 py-0.5 rounded-lg border border-white/5">
+                                  {d.value} ({((d.value / totalStatesLeads) * 100).toFixed(0)}%)
+                                </span>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Agents & Events Overview Card */}
