@@ -16,7 +16,7 @@ FIELD_MAPPINGS = {
     "customer_type": ["customertype", "custtype"],
     "state": ["state"],
     "pincode": ["pincode", "pin", "zip", "zipcode"],
-    "lg_code": ["lgcode", "lg_code"],
+    "lg_code": ["lgcode", "lg_code", "lg", "agentcode", "agentlgcode"],
     "ipa_status": ["ipastatus", "ipa"],
     "dropoff_reason": ["dropoffreason", "dropoff"],
     "idcom_status": ["idcomstatus", "idcom"],
@@ -123,25 +123,30 @@ def get_contacts(
     
     # Dynamic heal/enrichment for unmatched agent fields
     try:
-        unpopulated_agent_leads = db.exec(
+        agent_leads = db.exec(
             select(Contact)
             .where(Contact.lg_code != None)
-            .where(Contact.executive_name == None)
         ).all()
-        if unpopulated_agent_leads:
+        if agent_leads:
             agents = db.exec(select(Agent)).all()
             agent_map = {(a.user_id, a.lg_code.strip().upper()): a for a in agents}
-            for lead in unpopulated_agent_leads:
-                key = (lead.user_id, lead.lg_code.strip().upper())
-                if key in agent_map:
-                    agent_info = agent_map[key]
-                    lead.executive_name = agent_info.executive_name
-                    lead.executive_code = agent_info.executive_code
-                    lead.agent_city = agent_info.city
-                    lead.agent_place = agent_info.place
-                    lead.agent_venue = agent_info.venue
-                    db.add(lead)
-            db.commit()
+            healed = False
+            for lead in agent_leads:
+                lg_val = str(lead.lg_code).strip()
+                if lg_val and lg_val.upper() != "N/A" and lg_val != "":
+                    if not lead.executive_name or lead.executive_name.strip() in ["", "N/A"]:
+                        key = (lead.user_id, lg_val.upper())
+                        if key in agent_map:
+                            agent_info = agent_map[key]
+                            lead.executive_name = agent_info.executive_name
+                            lead.executive_code = agent_info.executive_code
+                            lead.agent_city = agent_info.city
+                            lead.agent_place = agent_info.place
+                            lead.agent_venue = agent_info.venue
+                            db.add(lead)
+                            healed = True
+            if healed:
+                db.commit()
     except Exception as e:
         print("Dynamic agent enrichment skipped:", e)
         
@@ -580,9 +585,10 @@ async def upload_excel(
             # Look up and populate Location & Agent details from matching lg_code
             if lead.lg_code:
                 lg_clean = str(lead.lg_code).strip()
+                from sqlmodel import func
                 agent_info = db.exec(
                     select(Agent)
-                    .where(Agent.lg_code == lg_clean)
+                    .where(func.upper(Agent.lg_code) == lg_clean.upper())
                     .where(Agent.user_id == lead.user_id)
                 ).first()
                 if agent_info:
