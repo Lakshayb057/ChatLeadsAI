@@ -16,6 +16,7 @@ class UserResponse(BaseModel):
     company_name: Optional[str]
     max_sessions: int
     is_active: bool
+    allow_bulk: bool
 
 class CompanyUserCreate(BaseModel):
     display_name: str
@@ -23,6 +24,7 @@ class CompanyUserCreate(BaseModel):
     password: str
     company_name: str
     max_sessions: int = 5
+    allow_bulk: bool = False
 
 class CompanyUserUpdate(BaseModel):
     display_name: Optional[str] = None
@@ -30,6 +32,7 @@ class CompanyUserUpdate(BaseModel):
     password: Optional[str] = None
     company_name: Optional[str] = None
     max_sessions: Optional[int] = None
+    allow_bulk: Optional[bool] = None
 
 @router.get("/", response_model=List[UserResponse])
 def list_users(
@@ -74,7 +77,8 @@ def create_company_user(
         display_name=payload.display_name,
         role="user",
         company_name=payload.company_name,
-        max_sessions=payload.max_sessions
+        max_sessions=payload.max_sessions,
+        allow_bulk=payload.allow_bulk
     )
     
     db.add(new_user)
@@ -152,6 +156,8 @@ def update_company_user(
         target_user.company_name = payload.company_name
     if payload.max_sessions is not None:
         target_user.max_sessions = payload.max_sessions
+    if payload.allow_bulk is not None:
+        target_user.allow_bulk = payload.allow_bulk
     if payload.password:
         target_user.hashed_password = get_password_hash(payload.password)
 

@@ -68,12 +68,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [role, setRole] = useState('user');
   const [displayName, setDisplayName] = useState('User');
   const [companyName, setCompanyName] = useState('');
+  const [allowBulk, setAllowBulk] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedRole = localStorage.getItem('role');
       const storedName = localStorage.getItem('display_name');
       const storedCompany = localStorage.getItem('company_name');
+      const storedAllowBulk = localStorage.getItem('allow_bulk') === 'true';
       
       if (!storedRole) {
         router.push('/login');
@@ -83,6 +85,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setRole(storedRole);
       setDisplayName(storedName || 'User');
       setCompanyName(storedCompany || 'Client Company');
+      setAllowBulk(storedAllowBulk);
     }
   }, [router]);
 
@@ -90,7 +93,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { href: '/dashboard', label: 'Overview', icon: <LayoutDashboard size={20} /> },
     { href: '/dashboard/leads', label: 'Leads', icon: <Users size={20} /> },
     { href: '/dashboard/leads-dashboard', label: 'Leads Dashboard', icon: <BarChart2 size={20} /> },
-    { href: '/dashboard/bulk-data', label: 'Bulk Data', icon: <Database size={20} /> },
+    ...((allowBulk || role === 'superadmin') ? [
+      { href: '/dashboard/bulk-data', label: 'Bulk Data', icon: <Database size={20} /> }
+    ] : []),
     { href: '/dashboard/whatsapp', label: 'WhatsApp', icon: <MessageSquare size={20} /> },
     ...(role === 'superadmin' ? [
       { href: '/dashboard/users', label: 'Companies', icon: <Briefcase size={20} /> }

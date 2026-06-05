@@ -24,6 +24,7 @@ class TokenResponse(BaseModel):
     email: str
     company_name: Optional[str] = None
     max_sessions: int
+    allow_bulk: bool = False
 
 class LoginRequest(BaseModel):
     email: str
@@ -87,7 +88,8 @@ def process_login(email: str, password: str, source: Optional[str], db: Session)
         "display_name": user.display_name,
         "email": user.email,
         "company_name": user.company_name,
-        "max_sessions": user.max_sessions
+        "max_sessions": user.max_sessions,
+        "allow_bulk": user.allow_bulk
     }
 
 @router.post("/login", response_model=TokenResponse)

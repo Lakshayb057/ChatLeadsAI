@@ -69,6 +69,7 @@ function LoginFormContent() {
       localStorage.setItem('email', data.email);
       localStorage.setItem('company_name', data.company_name || 'Individual');
       localStorage.setItem('max_sessions', String(data.max_sessions));
+      localStorage.setItem('allow_bulk', String(data.allow_bulk || false));
 
       setTimeout(() => {
         router.push('/dashboard');

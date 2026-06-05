@@ -14,6 +14,7 @@ interface CompanyUser {
   company_name: string;
   max_sessions: number;
   is_active: boolean;
+  allow_bulk: boolean;
 }
 
 const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/$/, '');
@@ -32,6 +33,7 @@ export default function CompaniesPage() {
   const [password, setPassword] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [maxSessions, setMaxSessions] = useState(3);
+  const [allowBulk, setAllowBulk] = useState(false);
   const [formError, setFormError] = useState('');
 
   // Fetch registered companies
@@ -80,6 +82,7 @@ export default function CompaniesPage() {
         email: email.trim(),
         company_name: companyName.trim(),
         max_sessions: Number(maxSessions),
+        allow_bulk: allowBulk,
       };
 
       if (!isEditing || password.trim()) {
@@ -110,6 +113,7 @@ export default function CompaniesPage() {
       setPassword('');
       setCompanyName('');
       setMaxSessions(3);
+      setAllowBulk(false);
       
       // Refresh list
       fetchCompanies();
@@ -126,6 +130,7 @@ export default function CompaniesPage() {
     setEmail(user.email);
     setCompanyName(user.company_name);
     setMaxSessions(user.max_sessions);
+    setAllowBulk(user.allow_bulk || false);
     setPassword(''); // leave blank for no change
     setModalOpen(true);
   };
@@ -136,6 +141,7 @@ export default function CompaniesPage() {
     setEmail('');
     setCompanyName('');
     setMaxSessions(3);
+    setAllowBulk(false);
     setPassword('');
     setModalOpen(true);
   };
@@ -265,6 +271,7 @@ export default function CompaniesPage() {
                   <th className="py-5 px-8 text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">Company Name</th>
                   <th className="py-5 px-6 text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">Primary Admin</th>
                   <th className="py-5 px-6 text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">WhatsApp Quota</th>
+                  <th className="py-5 px-6 text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">Bulk Data</th>
                   <th className="py-5 px-6 text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">Status</th>
                   <th className="py-5 px-8 text-right text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)]">Actions</th>
                 </tr>
@@ -291,6 +298,15 @@ export default function CompaniesPage() {
                       <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black"
                         style={{ background: 'var(--bg-hover)', border: '1px solid var(--border-glow)', color: 'var(--purple-mid)' }}>
                         <Smartphone size={12} /> {user.max_sessions} Devices Max
+                      </div>
+                    </td>
+                    <td className="py-6 px-6">
+                      <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                        user.allow_bulk 
+                          ? 'bg-purple-50 border border-purple-100 text-[var(--purple-mid)]' 
+                          : 'bg-gray-100/10 border border-[var(--border-subtle)] text-[var(--text-ghost)]'
+                      }`}>
+                        {user.allow_bulk ? 'Enabled' : 'Disabled'}
                       </div>
                     </td>
                     <td className="py-6 px-6">
@@ -392,6 +408,20 @@ export default function CompaniesPage() {
                     value={maxSessions} onChange={e => setMaxSessions(Number(e.target.value))} />
                 </div>
                 <p className="text-[10px] font-medium text-[var(--text-secondary)]">Maximum concurrent connected devices this company is allowed to link.</p>
+              </div>
+
+              {/* Bulk Data Access Checkbox */}
+              <div className="flex items-center gap-3 p-3.5 rounded-xl border cursor-pointer hover:bg-opacity-80 transition-all"
+                style={{ background: 'var(--bg-hover)', borderColor: 'var(--border-subtle)' }}
+                onClick={() => setAllowBulk(v => !v)}>
+                <input type="checkbox" className="w-4 h-4 rounded text-[var(--purple-mid)] focus:ring-[var(--purple-mid)] cursor-pointer"
+                  checked={allowBulk}
+                  onChange={(e) => e.stopPropagation()} // let the div onClick handle it
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-[var(--text-primary)] text-xs">Bulk Data Access</p>
+                  <p className="text-[10px] font-medium text-[var(--text-secondary)] mt-0.5">Allow this company to parse and approve bulk leads from Excel screenshots.</p>
+                </div>
               </div>
 
               {/* Form errors */}

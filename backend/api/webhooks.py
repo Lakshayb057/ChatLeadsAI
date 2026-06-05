@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlmodel import Session, select
 from database import get_session, engine
-from models import Contact, WhatsAppSession, BulkContact
+from models import Contact, WhatsAppSession, BulkContact, User
 from services.extractor import extractor
 from pydantic import BaseModel
 from typing import Optional, List
@@ -55,8 +55,12 @@ async def process_lead_background(msg: WhatsAppMessage, image_bytes: Optional[by
                 print(f"⚠️ No data extracted from this message")
                 return
             
+            # Check if session owner has bulk features enabled
+            owner_user = db.get(User, session.user_id)
+            allow_bulk = owner_user.allow_bulk if owner_user else False
+
             # Check if this is a bulk excel screenshot
-            is_excel = bool(extracted.get('is_excel_screenshot', False))
+            is_excel = bool(extracted.get('is_excel_screenshot', False)) and allow_bulk
             leads = extracted.get('leads', [])
             
             if is_excel and len(leads) > 1:
