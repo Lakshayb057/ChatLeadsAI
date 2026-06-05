@@ -29,20 +29,30 @@ load_dotenv()
 def get_system_prompt(text_content: str, context: Optional[str] = None) -> str:
     context_str = f"\nRECENT CONTEXT (Previous messages from this contact):\n{context}" if context else ""
     return f"""
-        You are an Expert Lead Generation Agent. Your task is to analyze the provided input (which can be a Text message, an attached Image, or BOTH together) to identify a potential lead.
+        You are an Expert Lead Generation Agent. Your task is to analyze the provided input (which can be a Text message, an attached Image, or BOTH together) to identify potential leads.
         
         CRITICAL PIPELINE INSTRUCTIONS:
-        1. FIRST, analyze the input (both the Text caption/message AND/OR the attached Image simultaneously) to see if a contact (mobile phone number or landline) or email (mail) is present.
-           - A contact is a phone number (e.g., 10-digit mobile number, with or without spaces/dashes/formatting, or with a country/area prefix like +91 82958 86832, 82958 86832, 011 4464 2345, 011-4464-2345).
-           - An email is an email address (e.g., matching standard email pattern, gmail, company email).
-        2. IF AND ONLY IF at least one of these contact details (mobile or email) is present in either the text or the image, proceed to find the name of the person (the lead) and the Application Reference Number (ARN) if present.
-           - If a text caption and an image are sent together, synthesize them: extract the name, email, and mobile from the text, and extract the Application Reference Number (ARN) from the image (or vice versa), compiling them into a single, unified lead record.
-        3. IF NEITHER a contact (mobile) NOR an email (mail) is present in either the text or the image, this is NOT a lead. You MUST immediately return "absent" for name, mobile, email, and arn, and set confidence to 0.0.
+        1. FIRST, analyze the input (both the Text caption/message AND/OR the attached Image simultaneously).
+           Specifically, check if the attached image is a screenshot of an Excel sheet, Google Sheet, or other tabular spreadsheet containing MULTIPLE rows/entries of contact information (such as name, contact/mobile, email, and Application Reference Number/ARN).
         
+        2. Spreadsheet Detection:
+           - If the image is a screenshot of a spreadsheet or Excel table with MORE than one data row/entry, set "is_excel_screenshot" to true.
+           - Extract ALL the data rows present in the screenshot into a JSON list of objects under the "leads" key.
+           - For each row, extract the name, mobile/contact, email, and ARN if present.
+        
+        3. Single Lead / Non-Spreadsheet Detection:
+           - If the image is NOT a spreadsheet screenshot (e.g. it is a business card, a single bank receipt, an invoice, a text message, or there is only a single lead), set "is_excel_screenshot" to false.
+           - In this case, extract the single lead details (name, mobile/contact, email, and ARN) and place it as a single object inside the "leads" list.
+           
+        4. Valid Lead Criteria:
+           - A valid lead MUST contain contact details (either mobile/phone number or email).
+           - A mobile/contact is a phone number (e.g., 10-digit mobile number, with or without spaces/dashes/formatting, or with a country/area prefix like +91 82958 86832, 82958 86832, 011 4464 2345).
+           - An email is an email address (e.g., matching standard email pattern, gmail, company email).
+           - If a lead (or a row in the spreadsheet) does NOT have at least a mobile number or an email, it is NOT a valid lead and you should set its name, mobile, email, and arn to "absent".
+           
         RULES FOR ARN EXTRACTION:
         - Look for an Application Reference Number, Transaction Reference, Submission Reference, or similar sequence (referred to as "ARN" or "ARN number").
         - The ARN is typically a long digit sequence (e.g., 12 to 20 digits, such as 987654321123456 or 98654321234567890).
-        - It can be located inside the attached image (like a screenshot showing a bank submission or receipt) or in the text.
         - If found, extract the numeric/alphanumeric ARN. If not found, return "absent".
         
         RULES FOR NAME EXTRACTION:
@@ -54,37 +64,36 @@ def get_system_prompt(text_content: str, context: Optional[str] = None) -> str:
           * Action/Status words: "Sleeping", "Busy", "Working", "Available"
         - If no real, relevant person's name is present, but a contact/email is present, extract the contact/email but return "absent" for the name.
         
-        STEP-BY-STEP PROCESS FOR IMAGES:
-        1. Read every single word and number visible in the image (especially if it's a business card or bank receipt).
-        2. Follow the CRITICAL PIPELINE INSTRUCTIONS above to determine if contact info exists first.
-        3. Extract fields accordingly.
-        
-        STEP-BY-STEP PROCESS FOR TEXT:
-        1. Follow the CRITICAL PIPELINE INSTRUCTIONS above to determine if contact info exists first.
-        2. Extract fields accordingly.
-        
         {context_str}
         
         INPUT CONTENT (Message/OCR):
         {text_content}
         
         REQUIRED JSON FIELDS:
-        1. name: The extracted name of the real person or "absent".
-        2. mobile: The extracted phone number (as-is, with formatting/spaces/country codes if present) or "absent". Do not force it to be strictly 10 digits; extract the full number from the text/image.
-        3. email: The extracted email or "absent".
-        4. arn: The extracted Application Reference Number (ARN) or "absent".
+        1. is_excel_screenshot: Boolean (true if the image is a screenshot of a spreadsheet with more than one row of data, false otherwise).
+        2. leads: A list of lead objects, where each object contains:
+           - name: The extracted name of the real person or "absent".
+           - mobile: The extracted phone number or "absent".
+           - email: The extracted email or "absent".
+           - arn: The extracted Application Reference Number (ARN) or "absent".
+        3. lead_score: "Hot/Warm/Cold" (overall score for the interaction).
+        4. confidence: 0.0 to 1.0 (overall confidence of extraction).
         
         CRITICAL RULES:
-        - If you see a business card, the "name" should be the person's name on the card.
-        - You MUST use "absent" for any field not found.
+        - You MUST use "absent" for any field not found inside any lead object.
         - Return ONLY a valid JSON object.
         
         JSON FORMAT:
         {{
-            "name": "string or \"absent\"",
-            "mobile": "string or \"absent\"",
-            "email": "string or \"absent\"",
-            "arn": "string or \"absent\"",
+            "is_excel_screenshot": false,
+            "leads": [
+                {{
+                    "name": "string or \"absent\"",
+                    "mobile": "string or \"absent\"",
+                    "email": "string or \"absent\"",
+                    "arn": "string or \"absent\""
+                }}
+            ],
             "lead_score": "Hot/Warm/Cold",
             "confidence": 0.0 to 1.0
         }}
@@ -223,47 +232,91 @@ class ExtractorService:
                 full_text_for_regex = f"{context_str}\n{combined_text}" if context_str else combined_text
                 result = self._regex_fallback(full_text_for_regex, sender_name)
 
-            # Ensure all required fields are present
+            # Ensure all required fields are present and clean them
             if result:
-                result['name'] = result.get('name', 'absent')
-                result['mobile'] = result.get('mobile', 'absent')
-                result['email'] = result.get('email', 'absent')
-                result['arn'] = result.get('arn', 'absent')
+                # Check if we have the new 'leads' list format. If not, normalize it.
+                if 'leads' not in result or not isinstance(result['leads'], list):
+                    # Wrap single lead format into the new leads array format
+                    result['is_excel_screenshot'] = result.get('is_excel_screenshot', False)
+                    result['leads'] = [{
+                        'name': result.get('name', 'absent'),
+                        'mobile': result.get('mobile', 'absent'),
+                        'email': result.get('email', 'absent'),
+                        'arn': result.get('arn', 'absent')
+                    }]
                 
-                # Sanitize ARN
-                if result['arn'] != 'absent' and result['arn']:
-                    clean_arn = re.sub(r'[\s\-:#]', '', str(result['arn']))
-                    if clean_arn.isalnum() and len(clean_arn) >= 8:
-                        result['arn'] = clean_arn
-                    else:
-                        result['arn'] = 'absent'
-
+                # Make sure is_excel_screenshot is a Boolean
+                result['is_excel_screenshot'] = bool(result.get('is_excel_screenshot', False))
                 
-                # Validate and clean mobile number
-                if result['mobile'] != 'absent':
-                    clean_mobile = re.sub(r'\D', '', str(result['mobile']))
-                    if len(clean_mobile) >= 8:
-                        # If it's a standard Indian mobile number (e.g. starts with country code 91 and has 12 digits), normalize to 10 digits
-                        if len(clean_mobile) == 12 and clean_mobile.startswith('91'):
-                            result['mobile'] = clean_mobile[-10:]
-                        # If it starts with 0 and has 11 digits (like standard STD landlines 011 4464 2345), keep all 11 digits
-                        elif len(clean_mobile) == 11 and clean_mobile.startswith('0'):
-                            result['mobile'] = clean_mobile
-                        # Otherwise keep the full cleaned digits if it's 8 to 15 digits
-                        elif 8 <= len(clean_mobile) <= 15:
-                            result['mobile'] = clean_mobile
+                # Clean each lead inside the list
+                cleaned_leads = []
+                for lead in result['leads']:
+                    if not isinstance(lead, dict):
+                        continue
+                    
+                    l_name = lead.get('name', 'absent')
+                    l_mobile = lead.get('mobile', 'absent')
+                    l_email = lead.get('email', 'absent')
+                    l_arn = lead.get('arn', 'absent')
+                    
+                    # Sanitize ARN
+                    if l_arn != 'absent' and l_arn:
+                        clean_arn = re.sub(r'[\s\-:#]', '', str(l_arn))
+                        if clean_arn.isalnum() and len(clean_arn) >= 8:
+                            l_arn = clean_arn
                         else:
-                            result['mobile'] = 'absent'
+                            l_arn = 'absent'
                     else:
-                        result['mobile'] = 'absent'
+                        l_arn = 'absent'
+                    
+                    # Validate and clean mobile number
+                    if l_mobile != 'absent' and l_mobile:
+                        clean_mobile = re.sub(r'\D', '', str(l_mobile))
+                        if len(clean_mobile) >= 8:
+                            if len(clean_mobile) == 12 and clean_mobile.startswith('91'):
+                                l_mobile = clean_mobile[-10:]
+                            elif len(clean_mobile) == 11 and clean_mobile.startswith('0'):
+                                l_mobile = clean_mobile
+                            elif 8 <= len(clean_mobile) <= 15:
+                                l_mobile = clean_mobile
+                            else:
+                                l_mobile = 'absent'
+                        else:
+                            l_mobile = 'absent'
+                    else:
+                        l_mobile = 'absent'
+                        
+                    # Validate email
+                    if l_email != 'absent' and l_email:
+                        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+                        if not re.match(email_pattern, str(l_email)):
+                            l_email = 'absent'
+                    else:
+                        l_email = 'absent'
+                    
+                    cleaned_leads.append({
+                        'name': l_name,
+                        'mobile': l_mobile,
+                        'email': l_email,
+                        'arn': l_arn
+                    })
                 
-                # Validate email
-                if result['email'] != 'absent':
-                    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-                    if not re.match(email_pattern, result['email']):
-                        result['email'] = 'absent'
+                result['leads'] = cleaned_leads
                 
-                print(f"✅ Extraction Complete: Name={result.get('name')}, Mobile={result.get('mobile')}, Email={result.get('email')}, Confidence={result.get('confidence')}")
+                # For backward compatibility, also expose top-level properties using the first lead in the list
+                if cleaned_leads:
+                    first = cleaned_leads[0]
+                    result['name'] = first['name']
+                    result['mobile'] = first['mobile']
+                    result['email'] = first['email']
+                    result['arn'] = first['arn']
+                else:
+                    result['name'] = 'absent'
+                    result['mobile'] = 'absent'
+                    result['email'] = 'absent'
+                    result['arn'] = 'absent'
+                
+                print(f"✅ Extraction Complete: is_excel_screenshot={result.get('is_excel_screenshot')}, leads_count={len(result.get('leads', []))}")
             return result
         except Exception as e:
             print(f"❌ Critical Error in extraction pipeline: {e}. Falling back to clean Regex Extraction.")

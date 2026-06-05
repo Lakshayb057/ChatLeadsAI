@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlmodel import Session, select
 from database import get_session, engine
-from models import Contact, WhatsAppSession
+from models import Contact, WhatsAppSession, BulkContact
 from services.extractor import extractor
 from pydantic import BaseModel
 from typing import Optional, List
@@ -53,6 +53,115 @@ async def process_lead_background(msg: WhatsAppMessage, image_bytes: Optional[by
             # 3. Check if we have valid data in this message
             if not extracted:
                 print(f"⚠️ No data extracted from this message")
+                return
+            
+            # Check if this is a bulk excel screenshot
+            is_excel = bool(extracted.get('is_excel_screenshot', False))
+            leads = extracted.get('leads', [])
+            
+            if is_excel and len(leads) > 1:
+                print(f"📊 BULK Excel Screenshot Detected! Found {len(leads)} rows.")
+                added_bulk_count = 0
+                for idx, lead in enumerate(leads):
+                    l_name = lead.get('name', 'absent')
+                    l_mobile = lead.get('mobile', 'absent')
+                    l_email = lead.get('email', 'absent')
+                    l_arn = lead.get('arn', 'absent')
+                    
+                    # Validate and sanitize
+                    has_contact_info = False
+                    if l_mobile != "absent" and l_mobile and len(str(l_mobile)) >= 8:
+                        has_contact_info = True
+                    if l_email != "absent" and l_email and "@" in str(l_email):
+                        has_contact_info = True
+                        
+                    if not has_contact_info:
+                        print(f"   [Row {idx+1}] Skipping: No contact (mobile) or email (mail) in this entry.")
+                        continue
+                        
+                    if l_name != "absent" and l_name:
+                        l_name_lower = str(l_name).lower().strip()
+                        name_blacklist = [
+                            "dear students", "dear all", "dear student", "dear candidate", "dear parents",
+                            "reporting details", "special pep", "coding test", "announcement", "notice",
+                            "sleeping", "busy", "working", "driving", "available", "hello", "hi", "hey",
+                            "sir", "madam", "admin", "coordinator", "teacher", "host", "moderator",
+                            "whatsapp", "message", "incoming", "outgoing", "class", "session", "dashboard",
+                            "group", "team", "regards"
+                        ]
+                        is_invalid = False
+                        for term in name_blacklist:
+                            if term == l_name_lower or (len(term) > 4 and term in l_name_lower):
+                                is_invalid = True
+                                break
+                        if is_invalid or len(l_name) > 40 or len(l_name) < 2:
+                            l_name = "absent"
+                            
+                    # Check for exact duplicate in BulkContact or Contact
+                    is_exact_duplicate = False
+                    if l_mobile != "absent" and l_mobile:
+                        existing_by_mobile_contact = db.exec(select(Contact).where(
+                            Contact.session_id == msg.session_id,
+                            Contact.mobile == l_mobile
+                        )).first()
+                        existing_by_mobile_bulk = db.exec(select(BulkContact).where(
+                            BulkContact.session_id == msg.session_id,
+                            BulkContact.mobile == l_mobile
+                        )).first()
+                        if existing_by_mobile_contact or existing_by_mobile_bulk:
+                            is_exact_duplicate = True
+                            
+                    if not is_exact_duplicate and l_email != "absent" and l_email:
+                        existing_by_email_contact = db.exec(select(Contact).where(
+                            Contact.session_id == msg.session_id,
+                            Contact.email == l_email
+                        )).first()
+                        existing_by_email_bulk = db.exec(select(BulkContact).where(
+                            BulkContact.session_id == msg.session_id,
+                            BulkContact.email == l_email
+                        )).first()
+                        if existing_by_email_contact or existing_by_email_bulk:
+                            is_exact_duplicate = True
+                            
+                    if is_exact_duplicate:
+                        print(f"   [Row {idx+1}] Skipping - Contact already exists in Bulk or standard Leads.")
+                        continue
+                        
+                    # Save bulk contact
+                    bulk_data = {
+                        "user_id": session.user_id,
+                        "session_id": msg.session_id,
+                        "wa_jid": msg.sender_jid,
+                        "group_jid": msg.group_jid,
+                        "extracted_name": l_name if l_name != "absent" else None,
+                        "mobile": l_mobile if l_mobile != "absent" else None,
+                        "email": l_email if l_email != "absent" else None,
+                        "arn": l_arn if l_arn != "absent" else None,
+                        "confidence": extracted.get('confidence', 0.5),
+                        "lead_score": extracted.get('lead_score', 'Cold'),
+                        "source_message": msg.text[:500] if msg.text and msg.text not in ["[image]", "[media]"] else "[bulk image screenshot]"
+                    }
+                    
+                    bulk_contact = BulkContact(**bulk_data)
+                    db.add(bulk_contact)
+                    added_bulk_count += 1
+                
+                db.commit()
+                print(f"✅ Saved {added_bulk_count} new bulk leads in pending status.")
+                
+                # Broadcast WebSocket update
+                try:
+                    from core.ws import manager
+                    await manager.broadcast({
+                        "event": "bulk_lead_updated",
+                        "data": {
+                            "action": "created",
+                            "session": msg.session_id,
+                            "count": added_bulk_count
+                        }
+                    })
+                except Exception as ws_err:
+                    print(f"⚠️ Broadcast error: {ws_err}")
                 return
             
             name = extracted.get('name', 'absent')

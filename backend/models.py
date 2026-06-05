@@ -87,3 +87,21 @@ class Agent(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
+class BulkContact(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id")
+    session_id: Optional[str] = None
+    wa_jid: str = Field(index=True)
+    group_jid: Optional[str] = None
+    extracted_name: Optional[str] = None
+    mobile: Optional[str] = None
+    email: Optional[str] = None
+    arn: Optional[str] = Field(default=None)
+    confidence: float = 0.0
+    lead_score: Optional[str] = None
+    source_message: Optional[str] = None
+    status: str = Field(default="pending")  # pending, added
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+

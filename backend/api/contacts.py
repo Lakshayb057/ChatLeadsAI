@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlmodel import Session, select
 from database import get_session
-from models import Contact, WhatsAppSession, User, Agent
+from models import Contact, WhatsAppSession, User, Agent, BulkContact
 from typing import List, Optional
 from datetime import datetime
 import datetime as dt_module
@@ -830,3 +830,302 @@ async def export_matched_contacts(
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+# ==========================================
+# Bulk Lead Management Endpoints
+# ==========================================
+
+class BulkApproveMultiple(BaseModel):
+    bulk_ids: List[int]
+
+@router.get("/bulk")
+async def get_bulk_contacts(
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+    session_id: Optional[str] = None,
+    status: str = Query("pending"),  # pending, added, all
+    query: Optional[str] = None,
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0)
+):
+    statement = select(BulkContact).order_by(BulkContact.created_at.desc())
+    if current_user.role != "superadmin":
+        statement = statement.where(BulkContact.user_id == current_user.id)
+    
+    if session_id:
+        statement = statement.where(BulkContact.session_id == session_id)
+        
+    if status != "all":
+        statement = statement.where(BulkContact.status == status)
+        
+    if query:
+        statement = statement.where(
+            (BulkContact.extracted_name.contains(query)) | 
+            (BulkContact.email.contains(query)) | 
+            (BulkContact.mobile.contains(query)) |
+            (BulkContact.arn.contains(query))
+        )
+        
+    statement = statement.offset(offset).limit(limit)
+    bulk_contacts = db.exec(statement).all()
+    
+    result = []
+    for bc in bulk_contacts:
+        owner = db.get(User, bc.user_id)
+        result.append({
+            "id": bc.id,
+            "session_id": bc.session_id,
+            "wa_jid": bc.wa_jid,
+            "group_jid": bc.group_jid,
+            "extracted_name": bc.extracted_name,
+            "mobile": bc.mobile,
+            "email": bc.email,
+            "arn": bc.arn,
+            "confidence": bc.confidence,
+            "lead_score": bc.lead_score,
+            "source_message": bc.source_message,
+            "status": bc.status,
+            "created_at": bc.created_at,
+            "owner_company": owner.company_name if owner else None
+        })
+        
+    return result
+
+@router.post("/bulk/{bulk_id}/approve")
+async def approve_bulk_contact(
+    bulk_id: int,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    bc = db.get(BulkContact, bulk_id)
+    if not bc:
+        raise HTTPException(status_code=404, detail="Bulk contact not found")
+        
+    if current_user.role != "superadmin" and bc.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden: You do not own this bulk lead")
+        
+    if bc.status == "added":
+        raise HTTPException(status_code=400, detail="Lead already approved")
+        
+    # Check duplicate in standard Contact table before creating
+    existing_contact = None
+    if bc.mobile:
+        existing_contact = db.exec(select(Contact).where(
+            Contact.session_id == bc.session_id,
+            Contact.mobile == bc.mobile
+        )).first()
+    if not existing_contact and bc.email:
+        existing_contact = db.exec(select(Contact).where(
+            Contact.session_id == bc.session_id,
+            Contact.email == bc.email
+        )).first()
+        
+    if existing_contact:
+        bc.status = "added"
+        db.add(bc)
+        db.commit()
+        db.refresh(bc)
+        return {"status": "success", "message": "Lead was already in standard leads", "contact_id": existing_contact.id}
+        
+    # Promote to Contact
+    contact_data = {
+        "user_id": bc.user_id,
+        "session_id": bc.session_id,
+        "wa_jid": bc.wa_jid,
+        "group_jid": bc.group_jid,
+        "extracted_name": bc.extracted_name,
+        "mobile": bc.mobile,
+        "email": bc.email,
+        "arn": bc.arn,
+        "confidence": bc.confidence,
+        "lead_score": bc.lead_score or "Cold",
+        "source_message": bc.source_message or "[approved from bulk]",
+        "source_type": "image_bulk"
+    }
+    
+    contact = Contact(**contact_data)
+    db.add(contact)
+    bc.status = "added"
+    db.add(bc)
+    
+    db.commit()
+    db.refresh(contact)
+    db.refresh(bc)
+    
+    # Broadcast updates to notify both Leads and Bulk Data grids
+    try:
+        from core.ws import manager
+        await manager.broadcast({
+            "event": "lead_updated",
+            "data": {
+                "action": "created",
+                "id": contact.id,
+                "name": contact.extracted_name,
+                "mobile": contact.mobile,
+                "email": contact.email,
+                "arn": contact.arn,
+                "score": contact.lead_score,
+                "session": contact.session_id
+            }
+        })
+        await manager.broadcast({
+            "event": "bulk_lead_updated",
+            "data": {
+                "action": "approved",
+                "session": bc.session_id,
+                "id": bc.id
+            }
+        })
+    except Exception as e:
+        print("WS broadcast failed in bulk approve:", e)
+        
+    return {"status": "success", "contact_id": contact.id}
+
+@router.post("/bulk/approve-multiple")
+async def approve_multiple_bulk_contacts(
+    payload: BulkApproveMultiple,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    approved_count = 0
+    sessions_to_notify = set()
+    
+    for bulk_id in payload.bulk_ids:
+        bc = db.get(BulkContact, bulk_id)
+        if not bc or bc.status == "added":
+            continue
+            
+        if current_user.role != "superadmin" and bc.user_id != current_user.id:
+            continue
+            
+        sessions_to_notify.add(bc.session_id)
+        
+        # Check duplicate
+        existing_contact = None
+        if bc.mobile:
+            existing_contact = db.exec(select(Contact).where(
+                Contact.session_id == bc.session_id,
+                Contact.mobile == bc.mobile
+            )).first()
+        if not existing_contact and bc.email:
+            existing_contact = db.exec(select(Contact).where(
+                Contact.session_id == bc.session_id,
+                Contact.email == bc.email
+            )).first()
+            
+        if existing_contact:
+            bc.status = "added"
+            db.add(bc)
+            approved_count += 1
+            continue
+            
+        contact_data = {
+            "user_id": bc.user_id,
+            "session_id": bc.session_id,
+            "wa_jid": bc.wa_jid,
+            "group_jid": bc.group_jid,
+            "extracted_name": bc.extracted_name,
+            "mobile": bc.mobile,
+            "email": bc.email,
+            "arn": bc.arn,
+            "confidence": bc.confidence,
+            "lead_score": bc.lead_score or "Cold",
+            "source_message": bc.source_message or "[approved from bulk]",
+            "source_type": "image_bulk"
+        }
+        
+        contact = Contact(**contact_data)
+        db.add(contact)
+        bc.status = "added"
+        db.add(bc)
+        approved_count += 1
+        
+    db.commit()
+    
+    # Broadcast updates
+    try:
+        from core.ws import manager
+        await manager.broadcast({
+            "event": "lead_updated",
+            "data": {
+                "action": "bulk_excel_upload", # triggers reload of leads list
+            }
+        })
+        for s_id in sessions_to_notify:
+            await manager.broadcast({
+                "event": "bulk_lead_updated",
+                "data": {
+                    "action": "approved_multiple",
+                    "session": s_id,
+                    "count": approved_count
+                }
+            })
+    except Exception as e:
+        print("WS broadcast failed in multi approve:", e)
+        
+    return {"status": "success", "approved_count": approved_count}
+
+@router.delete("/bulk/{bulk_id}")
+async def delete_bulk_contact(
+    bulk_id: int,
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    bc = db.get(BulkContact, bulk_id)
+    if not bc:
+        raise HTTPException(status_code=404, detail="Bulk contact not found")
+        
+    if current_user.role != "superadmin" and bc.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Forbidden: You do not own this bulk lead")
+        
+    session_id = bc.session_id
+    db.delete(bc)
+    db.commit()
+    
+    try:
+        from core.ws import manager
+        await manager.broadcast({
+            "event": "bulk_lead_updated",
+            "data": {"action": "delete", "id": bulk_id, "session": session_id}
+        })
+    except Exception as ws_err:
+        print("WS broadcast failed in bulk delete:", ws_err)
+        
+    return {"status": "success"}
+
+@router.delete("/bulk-all/clear")
+async def delete_all_bulk_contacts(
+    session_id: Optional[str] = None,
+    status: str = Query("pending"),
+    db: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user)
+):
+    statement = select(BulkContact)
+    if current_user.role != "superadmin":
+        statement = statement.where(BulkContact.user_id == current_user.id)
+        
+    if session_id:
+        statement = statement.where(BulkContact.session_id == session_id)
+        
+    if status != "all":
+        statement = statement.where(BulkContact.status == status)
+        
+    bulk_to_delete = db.exec(statement).all()
+    count = len(bulk_to_delete)
+    
+    for bc in bulk_to_delete:
+        db.delete(bc)
+        
+    db.commit()
+    
+    try:
+        from core.ws import manager
+        await manager.broadcast({
+            "event": "bulk_lead_updated",
+            "data": {"action": "delete_all", "count": count, "session": session_id}
+        })
+    except Exception as ws_err:
+        print("WS broadcast failed in bulk delete all:", ws_err)
+        
+    return {"status": "success", "deleted_count": count}

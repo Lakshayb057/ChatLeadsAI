@@ -15,15 +15,17 @@ import {
   Wifi,
   WifiOff,
   Sparkles,
-  BarChart2
+  BarChart2,
+  Layers
 } from 'lucide-react';
 import { useWebSocket } from '../hooks/useWebSocket';
 
 interface Stats {
-  summary: { total_leads: number; active_fleet: number; hot_ratio: number };
+  summary: { total_leads: number; active_fleet: number; hot_ratio: number; total_bulk?: number };
   scoring: { hot: number; warm: number; cold: number };
   fleet: Array<{ name: string; leads: number }>;
   recent: Array<{ id: number; name: string; score: string; time: string; session: string; message?: string }>;
+  total_bulk?: number;
 }
 
 /* ─── Animated Number ───────────────────────────────────── */
@@ -265,7 +267,7 @@ export default function DashboardOverview() {
 
   useEffect(() => { fetchStats(); }, []);
   useEffect(() => {
-    if (lastMessage && (lastMessage.event === 'lead_updated' || lastMessage.event === 'session_updated')) {
+    if (lastMessage && (lastMessage.event === 'lead_updated' || lastMessage.event === 'session_updated' || lastMessage.event === 'bulk_lead_updated')) {
       fetchStats();
     }
   }, [lastMessage]);
@@ -350,7 +352,7 @@ export default function DashboardOverview() {
       </motion.div>
 
       {/* ── Stat Cards ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
         <StatCard
           title="Total Intelligence"
           value={stats.summary.total_leads}
@@ -372,6 +374,16 @@ export default function DashboardOverview() {
           delay={0.2}
         />
         <StatCard
+          title="Bulk Staged Data"
+          value={stats.total_bulk ?? 0}
+          label="Bulk Leads Staged"
+          icon={<Layers size={24} />}
+          gradient="linear-gradient(135deg, #6d28d9, #4c1d95)"
+          glowColor="#8b5cf6"
+          trend="Approval Staging"
+          delay={0.3}
+        />
+        <StatCard
           title="Conversion Heat"
           value={`${stats.summary.hot_ratio}%`}
           label="Hot Lead Ratio"
@@ -379,7 +391,7 @@ export default function DashboardOverview() {
           gradient="linear-gradient(135deg, #d97706, #92400e)"
           glowColor="#f59e0b"
           trend="Action Required"
-          delay={0.3}
+          delay={0.4}
         />
       </div>
 

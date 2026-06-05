@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlmodel import Session, select, func
 from database import get_session
-from models import Contact, WhatsAppSession, User
+from models import Contact, WhatsAppSession, User, BulkContact
 from typing import Dict, List
 from core.auth import get_current_user
 
@@ -17,6 +17,7 @@ async def get_overview_stats(
             # 1. Total Counts with safety
             total_leads = db.query(func.count(Contact.id)).scalar() or 0
             active_sessions = db.query(func.count(WhatsAppSession.id)).filter(WhatsAppSession.status == "connected").scalar() or 0
+            total_bulk = db.query(func.count(BulkContact.id)).filter(BulkContact.status == "pending").scalar() or 0
             
             # 2. Lead Scoring Breakdown
             hot_leads = db.query(func.count(Contact.id)).filter(Contact.lead_score == "Hot").scalar() or 0
@@ -39,6 +40,7 @@ async def get_overview_stats(
             # 1. Total Counts with safety
             total_leads = db.query(func.count(Contact.id)).filter(Contact.user_id == current_user.id).scalar() or 0
             active_sessions = db.query(func.count(WhatsAppSession.id)).filter(WhatsAppSession.status == "connected", WhatsAppSession.user_id == current_user.id).scalar() or 0
+            total_bulk = db.query(func.count(BulkContact.id)).filter(BulkContact.status == "pending", BulkContact.user_id == current_user.id).scalar() or 0
             
             # 2. Lead Scoring Breakdown
             hot_leads = db.query(func.count(Contact.id)).filter(Contact.lead_score == "Hot", Contact.user_id == current_user.id).scalar() or 0
@@ -70,6 +72,7 @@ async def get_overview_stats(
         return {
             "total_leads": total_leads,
             "active_fleet": active_sessions,
+            "total_bulk": total_bulk,
             "hot_leads": hot_leads,
             "warm_leads": warm_leads,
             "cold_leads": cold_leads,
@@ -77,6 +80,7 @@ async def get_overview_stats(
             "summary": {
                 "total_leads": total_leads,
                 "active_fleet": active_sessions,
+                "total_bulk": total_bulk,
                 "hot_ratio": round((hot_leads / total_leads * 100) if total_leads > 0 else 0),
             },
             "scoring": {
@@ -92,11 +96,12 @@ async def get_overview_stats(
         return {
             "total_leads": 0,
             "active_fleet": 0,
+            "total_bulk": 0,
             "hot_leads": 0,
             "warm_leads": 0,
             "cold_leads": 0,
             "hot_ratio": 0,
-            "summary": {"total_leads": 0, "active_fleet": 0, "hot_ratio": 0},
+            "summary": {"total_leads": 0, "active_fleet": 0, "total_bulk": 0, "hot_ratio": 0},
             "scoring": {"hot": 0, "warm": 0, "cold": 0},
             "fleet": [],
             "recent": []
