@@ -639,50 +639,13 @@ async def upload_excel(
         lead = contact_map.get(arn_str)
         
         if not lead:
-            # Create a new contact if not found in the database
-            mobile_str = None
-            name_str = "Imported Lead"
-            email_str = None
-            
-            for col in headers:
-                col_clean = clean_header(col)
-                if col_clean in ["mobile", "mobilenumber", "phone", "phonenumber", "contact", "contactnumber", "phoneno", "mobileno", "mob"]:
-                    m_val = row[col]
-                    if not pd.isna(m_val):
-                        digits = "".join(filter(str.isdigit, str(m_val)))
-                        if digits:
-                            if len(digits) == 10:
-                                mobile_str = "91" + digits
-                            else:
-                                mobile_str = digits
-                elif col_clean in ["name", "customername", "clientname", "leadname", "fullname", "nameofthecustomer", "custname"]:
-                    n_val = row[col]
-                    if not pd.isna(n_val) and str(n_val).strip():
-                        name_str = str(n_val).strip()
-                elif col_clean in ["email", "emailaddress", "mail", "mailid"]:
-                    e_val = row[col]
-                    if not pd.isna(e_val) and str(e_val).strip():
-                        email_str = str(e_val).strip()
-            
-            # Construct wa_jid
-            if mobile_str:
-                wa_jid = f"{mobile_str}@s.whatsapp.net"
-            else:
-                wa_jid = f"excel_{arn_str}@s.whatsapp.net"
-                
-            lead = Contact(
-                user_id=current_user.id,
-                wa_jid=wa_jid,
-                extracted_name=name_str,
-                mobile=mobile_str,
-                email=email_str,
-                arn=arn_str,
-                source_type="excel",
-                confidence=1.0,
-                lead_score="Warm"
-            )
-            db.add(lead)
-            contact_map[arn_str] = lead
+            if arn_str not in unmatched_seen:
+                unmatched_seen.add(arn_str)
+                if arn_str in global_arns:
+                    unmatched_arns.append({"arn": arn_str, "reason": "Belongs to another company"})
+                else:
+                    unmatched_arns.append({"arn": arn_str, "reason": "Not found in database"})
+            continue
             
         # Update mapped details
         for db_field, excel_col in mapped_columns.items():
