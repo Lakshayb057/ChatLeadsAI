@@ -74,8 +74,9 @@ def get_system_prompt(text_content: str, context: Optional[str] = None) -> str:
            
         RULES FOR ARN EXTRACTION:
         - Look for an Application Reference Number, UTR Number, Transaction Reference, Submission Reference, or similar sequence (referred to as "ARN" or "UTR").
-        - The ARN/UTR is typically a long digit sequence (e.g., 12 to 20 digits, such as 987654321123456 or 98654321234567890).
-        - If found, extract the numeric/alphanumeric ARN/UTR. If not found, return "absent".
+        - Note that in spreadsheet tables, the first column contains the Application Reference Number/ARN (e.g. alphanumeric strings starting with prefixes like 'D26F' such as 'D26F18631413H0N1', 'D26F13920704S001', or similar).
+        - You MUST extract the full alphanumeric string from the first column as the "arn". Do NOT set it to "absent" if it is present.
+        - If found, extract the full numeric/alphanumeric ARN/UTR. If not found, return "absent".
         
         RULES FOR NAME EXTRACTION:
         - The name MUST be a real person's name or a business owner's name.
@@ -103,7 +104,8 @@ def get_system_prompt(text_content: str, context: Optional[str] = None) -> str:
         
         CRITICAL RULES:
         - You MUST use "absent" for any field not found inside any lead object.
-        - Return ONLY a valid JSON object.
+        - Return ONLY a valid, parseable JSON object matching the requested schema.
+        - Ensure that you use standard double quotes for all keys and values, and do not output duplicate braces like '{{' or invalid nested arrays. Keep the JSON structure clean and flat.
         
         JSON FORMAT:
         {{
@@ -560,7 +562,7 @@ class ExtractorService:
                 print(f"❌ Failed to encode image for Groq: {e}")
 
         payload = {
-            "model": "llama-3.2-11b-vision-preview",
+            "model": "meta-llama/llama-4-scout-17b-16e-instruct",
             "messages": [
                 {
                     "role": "user",
@@ -577,7 +579,7 @@ class ExtractorService:
         
         for attempt in range(max_retries + 1):
             try:
-                print(f"🤖 Groq API: Extracting data using meta-llama/llama-4-scout-17b-16e-instruct (attempt {attempt + 1}/{max_retries + 1})...")
+                print(f"🤖 Groq API: Extracting data using {payload['model']} (attempt {attempt + 1}/{max_retries + 1})...")
                 async with httpx.AsyncClient(timeout=30.0) as client:
                     response = await client.post(
                         "https://api.groq.com/openai/v1/chat/completions",
@@ -600,7 +602,14 @@ class ExtractorService:
                     await asyncio.sleep(wait_sec)
                 else:
                     print(f"❌ Groq API returned status {response.status_code}: {response.text}")
-                    break
+                    if response.status_code == 401:
+                        # Permanent authentication failure, do not retry
+                        break
+                    if attempt == max_retries:
+                        break
+                    wait_sec = 2.0 + random.uniform(0.0, 1.0)
+                    print(f"⏳ Retrying in {wait_sec:.2f}s...")
+                    await asyncio.sleep(wait_sec)
             except Exception as e:
                 print(f"❌ Groq Connection Error: {e}")
                 if attempt == max_retries:
