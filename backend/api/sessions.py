@@ -7,10 +7,39 @@ from typing import Optional, List
 import httpx
 import datetime
 import os
+import asyncio
 from jose import jwt, JWTError
 from core.auth import oauth2_scheme, SECRET_KEY, ALGORITHM
 
 WHATSAPP_SERVICE_URL = os.getenv("WHATSAPP_SERVICE_URL", "http://localhost:8001").rstrip("/")
+
+async def call_whatsapp_hub(endpoint: str, data: dict, max_retries: int = 3) -> httpx.Response:
+    url = f"{WHATSAPP_SERVICE_URL}/{endpoint.lstrip('/')}"
+    # Use a large timeout to accommodate Render free-tier cold starts (up to 60 seconds)
+    timeout = httpx.Timeout(60.0, connect=30.0)
+    
+    for attempt in range(max_retries + 1):
+        try:
+            print(f"📡 Calling WhatsApp Hub: POST {url} (attempt {attempt + 1}/{max_retries + 1})...")
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.post(url, json=data)
+                
+                # If we get a 502/503, Render is likely spinning up the container
+                if response.status_code in (502, 503) and attempt < max_retries:
+                    wait_time = 5.0 + (attempt * 5.0)
+                    print(f"⏳ WhatsApp Hub returned status {response.status_code} (cold start?). Retrying in {wait_time}s...")
+                    await asyncio.sleep(wait_time)
+                    continue
+                
+                response.raise_for_status()
+                return response
+        except (httpx.HTTPStatusError, httpx.RequestError) as e:
+            if attempt == max_retries:
+                print(f"❌ Failed to reach WhatsApp Hub after {max_retries + 1} attempts: {e}")
+                raise e
+            wait_time = 5.0 + (attempt * 5.0)
+            print(f"⚠️ Error calling WhatsApp Hub ({e}). Retrying in {wait_time}s...")
+            await asyncio.sleep(wait_time)
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
 
@@ -119,8 +148,7 @@ async def create_new_session(
     
     # Notify WhatsApp Hub to start new instance
     try:
-        async with httpx.AsyncClient() as client:
-            await client.post(f"{WHATSAPP_SERVICE_URL}/sessions/start", json={"session_id": session_id})
+        await call_whatsapp_hub("sessions/start", {"session_id": session_id})
     except Exception as e:
         print(f"Error starting session in Hub: {e}")
 
@@ -148,8 +176,7 @@ async def revoke_session(
         raise HTTPException(status_code=403, detail="Forbidden: You do not own this session")
     
     try:
-        async with httpx.AsyncClient() as client:
-            await client.post(f"{WHATSAPP_SERVICE_URL}/logout", json={"session_id": session_id})
+        await call_whatsapp_hub("logout", {"session_id": session_id})
     except Exception as e:
         print(f"Error calling WhatsApp service: {e}")
     
@@ -219,11 +246,9 @@ async def delete_session(
         
         # 1. KILL the instance in the WhatsApp Hub
         try:
-            async with httpx.AsyncClient() as client:
-                await client.post(f"{WHATSAPP_SERVICE_URL}/sessions/stop", json={"session_id": session_id})
+            await call_whatsapp_hub("sessions/stop", {"session_id": session_id})
             
             # Give the device time to process the remote logout signal
-            import asyncio
             await asyncio.sleep(2)
         except Exception as e:
             print(f"Non-critical: Hub stop failed: {e}")
